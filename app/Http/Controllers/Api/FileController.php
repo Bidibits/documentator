@@ -14,7 +14,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class FileController extends Controller
 {
     /**
-     * Files are never public: this is the only way to one, it needs a signed-in person, and every download is audited.
+     * Files are never public: this is the only way to one, it needs a signed-in person, and every use is audited.
+     * With ?view=1 the page is showing the file in its viewer rather than saving it, which is audited as a view.
      */
     public function download(Request $request, DocumentFile $file): StreamedResponse
     {
@@ -26,7 +27,7 @@ class FileController extends Controller
         $document = $file->version->document;
         AuditLog::record(
             SessionUser::resolve($request),
-            'file.downloaded',
+            $request->boolean('view') ? 'file.viewed' : 'file.downloaded',
             $file->original_name.' (Rev '.$file->version->rev_no.')',
             entityType: 'document',
             entityId: $document->code,

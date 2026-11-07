@@ -30,6 +30,10 @@ class AppPageTest extends TestCase
         $this->assertStringContainsString("script-src 'self'", $csp);
         $this->assertStringNotContainsString("script-src 'self' 'unsafe", $csp);
         $this->assertStringContainsString("frame-ancestors 'none'", $csp);
+        // the viewer shows files from blob: addresses and nowhere else
+        $this->assertStringContainsString('frame-src blob:;', $csp);
+        $this->assertStringContainsString('object-src blob:', $csp);
+        $this->assertStringNotContainsString("frame-src 'self'", $csp);
         $this->assertStringContainsString('no-cache', $response->headers->get('Cache-Control'));
     }
 

@@ -396,6 +396,19 @@ class DocumentTest extends TestCase
         $this->assertSame('TSI-26-11-08-01', DB::table('audit_logs')->where('action', 'file.downloaded')->value('entity_id'));
     }
 
+    public function test_looking_at_a_file_in_the_viewer_is_audited_as_a_view_not_a_download(): void
+    {
+        $this->signedIn();
+        $id = $this->register()->assertCreated()->json('document.versions.0.files.0.id');
+
+        $response = $this->api('GET', "/api/files/{$id}?view=1")->assertOk();
+
+        $this->assertStringContainsString('attachment', $response->headers->get('Content-Disposition'));
+        $this->assertSame('nosniff', $response->headers->get('X-Content-Type-Options'));
+        $this->assertSame(['sign-in', 'document.created', 'file.viewed'], $this->actions());
+        $this->assertSame('contract.pdf (Rev 0)', DB::table('audit_logs')->where('action', 'file.viewed')->value('note'));
+    }
+
     public function test_the_downloaded_bytes_are_the_uploaded_bytes(): void
     {
         $this->signedIn();

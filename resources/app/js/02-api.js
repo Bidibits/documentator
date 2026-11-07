@@ -36,9 +36,14 @@ async function api(method, path, body){
   return data || {};
 }
 
-// a file: fetched with the header (a plain link could not send it), then handed to the browser as a download
+// a file's bytes, fetched with the header (a plain link or <iframe src> could not send it)
+async function apiBlob(path){
+  return (await send("GET", path)).blob();
+}
+
+// a file handed to the browser as a download
 async function apiDownload(path, name){
-  const blob = await (await send("GET", path)).blob();
+  const blob = await apiBlob(path);
   const url = URL.createObjectURL(blob);
   const link = h("a", {href: url, download: name});
   document.body.append(link);

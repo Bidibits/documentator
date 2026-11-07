@@ -41,13 +41,14 @@ function fileList(files){
   return h("div", {class: "files"}, files.map(file => h("div", {class: "file-row"},
     h("span", {class: "fi"}, icon("docs")),
     h("div", {class: "fb"}, h("div", {class: "fn"}, file.name), h("div", {class: "fs"}, fmtSize(file.size))),
-    h("button", {class: "btn sm", type: "button", onclick: event => downloadClicked(event.currentTarget, file)}, icon("download"), "Download"))));
+    h("div", {class: "file-acts"},
+      previewKind(file.name) ? h("button", {class: "btn sm", type: "button", onclick: () => openViewer(file)}, icon("eye"), "View") : null,
+      h("button", {class: "btn sm", type: "button", onclick: event => downloadClicked(event.currentTarget, file)}, icon("download"), "Download")))));
 }
 
 async function downloadClicked(button, file){
   button.disabled = true;
-  try{ await apiDownload("/api/files/" + file.id, file.name); }
-  catch(e){ if(e.status !== 401) toast(e.code === "file_missing" ? "That file is missing from the server's storage." : errorWords(e), "warn"); }
+  try{ await downloadFile(file); }
   finally{ button.disabled = false; }
 }
 

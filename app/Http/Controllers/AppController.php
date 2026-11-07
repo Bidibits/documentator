@@ -9,11 +9,13 @@ class AppController extends Controller
     /**
      * Scripts and stylesheets come only from this site (built by scripts/build-app.mjs); no inline script runs.
      * Inline style attributes stay allowed. Fonts come from Google Fonts, as in PMS.
+     * The file viewer shows a downloaded file from a blob: address (an <iframe> for a PDF, which the browser's own PDF
+     * viewer draws, an <img> for a picture), so frames and plugins may use blob: and nothing else.
      */
     private const CSP = "default-src 'self'; script-src 'self'; "
         ."style-src 'self' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; "
         ."font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'; "
-        ."frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'";
+        ."frame-src blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src blob:";
 
     public function __invoke(): Response
     {

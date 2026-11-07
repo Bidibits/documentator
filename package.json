@@ -4,9 +4,10 @@
     "private": true,
     "type": "module",
     "engines": {
-        "node": ">=18"
+        "node": ">=22"
     },
     "scripts": {
-        "build": "node scripts/build-app.mjs"
+        "build": "node scripts/build-app.mjs",
+        "test:js": "node --test \"tests/js/*.test.mjs\""
     }
 }
