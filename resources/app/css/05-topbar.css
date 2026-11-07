@@ -1,4 +1,4 @@
-/* ---------- the signed-in page (a placeholder until the document screens exist) ---------- */
+/* ---------- the top bar of the signed-in app ---------- */
 .app[hidden]{display:none}
 .topbar{
   display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 24px;
@@ -10,8 +10,6 @@
 .brand .t span{font-size:12.5px; color:var(--ink-3)}
 .who{display:flex; align-items:center; gap:12px}
 .who-name{font-weight:550; color:var(--ink-2); overflow-wrap:anywhere}
-.home{max-width:720px; margin:0 auto; padding:48px 24px}
-.home h1{font-size:22px; margin-bottom:8px}
 @media (max-width:520px){
   .topbar{padding:10px 16px}
   .brand .t span{display:none}

@@ -1,0 +1,30 @@
+/* ---------- page header, toolbars ---------- */
+.page-head{display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-bottom:20px}
+.page-head .ph-t{min-width:0; flex:1 1 320px}
+.eyebrow{font-size:12px; font-weight:650; letter-spacing:.08em; text-transform:uppercase; color:var(--accent-text); margin-bottom:5px}
+.page-head h1{font-size:27px; line-height:1.15; font-weight:650; font-stretch:90%; letter-spacing:-.015em; text-wrap:balance}
+.page-head p{margin-top:6px; color:var(--ink-3); font-size:14px; max-width:70ch}
+.page-head .ph-a{display:flex; gap:8px; flex-wrap:wrap}
+
+.toolbar{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:14px}
+.q-slot,.af-slot,.af-wrap,.dept-slot,.dept-wrap{display:contents}
+.count-note{margin-left:auto; color:var(--ink-3); font-size:13px; white-space:nowrap}
+.toolbar select{
+  height:36px; padding:0 32px 0 11px; border:1px solid var(--line-2); border-radius:var(--r);
+  background:var(--surface) var(--chev) no-repeat right 10px center / 14px; appearance:none; -webkit-appearance:none;
+  color:var(--ink); font-size:13.5px; max-width:220px; min-width:0; transition:border-color .12s, box-shadow .12s, background-color .12s;
+}
+.toolbar select:hover{border-color:var(--ink-4)}
+.toolbar select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--ring)}
+.toolbar select:not(.plain):has(option:checked:not([value=""])){background-color:var(--accent-soft); border-color:var(--accent-line); color:var(--accent-text); font-weight:550}
+.q-wrap{position:relative; display:flex; align-items:center; flex:1 1 240px; max-width:360px; min-width:0}
+.q-wrap .ic{position:absolute; left:11px; width:16px; height:16px; color:var(--ink-4); pointer-events:none}
+.q-wrap input{
+  width:100%; height:36px; padding:0 34px 0 34px; border:1px solid var(--line-2); border-radius:var(--r);
+  background:var(--surface); color:var(--ink); font-size:13.5px; transition:border-color .12s, box-shadow .12s;
+}
+.q-wrap input::placeholder{color:var(--ink-4)}
+.q-wrap input:hover{border-color:var(--ink-4)}
+.q-wrap input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--ring)}
+.q-wrap kbd{position:absolute; right:9px; pointer-events:none}
+.q-wrap:focus-within kbd, .q-wrap input:not(:placeholder-shown) + kbd{display:none}

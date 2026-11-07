@@ -14,6 +14,13 @@
 <svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
   <symbol id="i-docs" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol>
   <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></symbol>
+  <symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-alert-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></symbol>
 </svg>
 
 <div class="app" id="app" hidden>
@@ -27,11 +34,51 @@
       <button class="btn sm" id="who-out" type="button"><svg class="ic"><use href="#i-logout"></use></svg>Sign out</button>
     </div>
   </header>
-  <main class="home">
-    <h1>You are signed in</h1>
-    <p class="muted">Documents, versions and the audit log come in the next steps. This page only shows that sign-in works.</p>
+
+  <main class="content">
+    <div class="page-head">
+      <div class="ph-t">
+        <h1>Documents</h1>
+        <p>Every registered document with its versions and files. Select a row to open it.</p>
+      </div>
+      <div class="ph-a"><button class="btn primary" id="doc-new" type="button"><svg class="ic"><use href="#i-upload"></use></svg>Upload document</button></div>
+    </div>
+    <div class="toolbar">
+      <div class="q-wrap">
+        <svg class="ic"><use href="#i-search"></use></svg>
+        <input id="doc-q" type="search" placeholder="Search documents" autocomplete="off" spellcheck="false" aria-label="Search documents">
+      </div>
+      <span class="count-note" id="doc-count"></span>
+    </div>
+    <div class="card tbl-card"><div class="tbl-scroll" id="doc-table"></div></div>
   </main>
 </div>
+
+<div class="scrim" id="scrim" hidden></div>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="m-title" tabindex="-1" hidden>
+  <div class="modal-h">
+    <h2 id="m-title"></h2>
+    <button class="btn ghost icon" id="m-x" type="button" aria-label="Close"><svg class="ic"><use href="#i-x"></use></svg></button>
+  </div>
+  <div class="modal-b" id="m-body"></div>
+  <div class="modal-f">
+    <button class="btn" id="m-cancel" type="button">Cancel</button>
+    <button class="btn primary" id="m-save" type="button">Save</button>
+  </div>
+</div>
+
+<aside class="drawer" id="drawer" aria-labelledby="d-title" tabindex="-1" hidden>
+  <div class="drawer-h">
+    <div class="d-head"><h2 id="d-title"></h2><div class="d-sub" id="d-sub"></div></div>
+    <div class="d-tools"><button class="btn ghost icon" id="d-x" type="button" aria-label="Close"><svg class="ic"><use href="#i-x"></use></svg></button></div>
+  </div>
+  <div class="drawer-body" id="d-body"></div>
+</aside>
+
+<div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+<datalist id="dl-types"></datalist>
+<datalist id="dl-depts"></datalist>
 
 <div class="signin" id="signin" hidden>
   <form class="si-card" id="si-form" novalidate aria-labelledby="si-title">

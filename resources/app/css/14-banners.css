@@ -1,0 +1,16 @@
+/* ---------- banners and callouts ---------- */
+.banner{
+  display:flex; align-items:center; gap:10px; padding:10px 12px 10px 14px; border-radius:var(--r-lg);
+  border:1px solid var(--line); background:var(--surface-2); color:var(--ink-2); font-size:13px; line-height:1.45; margin-bottom:18px;
+}
+.banner > .ic{flex:none}
+.banner > span{flex:1; min-width:0}
+.banner.warn{background:var(--due-soft); border-color:color-mix(in srgb, var(--due) 22%, transparent); color:var(--due)}
+.banner.error{background:var(--over-soft); border-color:color-mix(in srgb, var(--over) 22%, transparent); color:var(--over)}
+.banner.info{background:var(--accent-soft); border-color:var(--accent-line); color:var(--accent-text)}
+.callout{display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border-radius:var(--r); font-size:13px; line-height:1.45}
+.callout .ic{width:16px; height:16px; margin-top:1px}
+.callout.ok{background:var(--ok-soft); color:var(--ok)}
+.callout.due{background:var(--due-soft); color:var(--due)}
+.callout.over{background:var(--over-soft); color:var(--over)}
+.notice{padding:10px 14px; background:var(--due-soft); color:var(--due); border:1px solid color-mix(in srgb, var(--due) 25%, transparent); border-radius:var(--r); font-size:13px; line-height:1.45}

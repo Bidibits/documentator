@@ -4,6 +4,7 @@ function showHome(user){
   $("#signin").hidden = true;
   $("#app").hidden = false;
   document.documentElement.classList.remove("signed-out");
+  loadDocuments();
 }
 
 async function signOut(){

@@ -1,0 +1,50 @@
+/* ---------- drawer ---------- */
+.scrim{position:fixed; inset:0; background:var(--scrim); z-index:60; -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); animation:fade .18s ease-out}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.drawer{
+  position:fixed; top:0; right:0; bottom:0; width:min(660px, 100%); background:var(--surface); border-left:1px solid var(--line);
+  z-index:70; display:flex; flex-direction:column; box-shadow:var(--shadow-lg); padding-top:env(safe-area-inset-top,0px);
+  animation:drawerIn .24s cubic-bezier(.2,.8,.2,1);
+}
+@keyframes drawerIn{from{transform:translateX(28px); opacity:0}to{transform:none; opacity:1}}
+.drawer-h{display:flex; gap:14px; align-items:flex-start; padding:20px 22px 16px; border-bottom:1px solid var(--line)}
+.d-head{flex:1; min-width:0}
+.drawer-h h2{font-size:19px; font-weight:650; font-stretch:94%; line-height:1.25; overflow-wrap:anywhere}
+.d-sub{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:7px; color:var(--ink-3); font-size:12.5px}
+.d-sub .mono{font-size:12px}
+.drawer-body{overflow-y:auto; flex:1; overscroll-behavior:contain; padding:0 22px 28px}
+.dtabs{display:flex; gap:2px; border-bottom:1px solid var(--line); margin-top:16px; position:sticky; top:0; background:var(--surface); z-index:2; overflow-x:auto; scrollbar-width:none}
+.dtabs::-webkit-scrollbar{display:none}
+.dtab{
+  display:inline-flex; align-items:center; gap:6px; height:42px; padding:0 12px; border:0; background:transparent; color:var(--ink-3);
+  font-weight:550; font-size:13px; border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap;
+}
+.dtab:hover{color:var(--ink)}
+.dtab[aria-selected="true"]{color:var(--ink); border-bottom-color:var(--accent)}
+.dtab .n{font-size:11px; background:var(--surface-3); color:var(--ink-2); border-radius:999px; padding:1px 7px; font-variant-numeric:tabular-nums}
+.sec{padding:18px 0 4px; border-bottom:1px solid var(--line)}
+.sec:last-child{border-bottom:0}
+.sec > h3{font-size:11.5px; font-weight:650; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-3); margin-bottom:12px}
+.kv{display:grid; grid-template-columns:150px minmax(0,1fr); gap:9px 16px; margin:0 0 14px}
+.kv dt{color:var(--ink-3); font-size:13px; line-height:1.5}
+.kv dd{margin:0; min-width:0; overflow-wrap:anywhere; line-height:1.5}
+.tl{margin:18px 0 6px}
+.tl-item{position:relative; padding:0 0 18px 24px}
+.tl-item::before{content:""; position:absolute; left:5px; top:15px; bottom:-3px; width:1px; background:var(--line-2)}
+.tl-item:last-child{padding-bottom:4px}
+.tl-item:last-child::before{display:none}
+.tl-dot{position:absolute; left:0; top:4px; width:11px; height:11px; border-radius:50%; background:var(--surface); border:2.5px solid var(--tl, var(--accent))}
+.tl-top{display:flex; gap:8px; align-items:center; flex-wrap:wrap; min-height:20px}
+.tl-top strong{font-weight:600}
+.tl-when{margin-left:auto; font-family:var(--font-mono); font-size:11.5px; color:var(--ink-3); white-space:nowrap}
+.tl-amt{font-weight:600; font-variant-numeric:tabular-nums}
+.tl-sub{color:var(--ink-3); font-size:12.5px; margin-top:3px; line-height:1.45}
+.tl-note{margin-top:5px; font-size:13px; color:var(--ink-2); line-height:1.5}
+.tl ul{margin:5px 0 0; padding-left:18px; color:var(--ink-3); font-size:12.5px; line-height:1.5}
+.tl-top .btn.icon{margin:-4px -6px -4px 0}
+.drawer-f{
+  display:flex; gap:8px; flex-wrap:wrap; align-items:center; padding:12px 22px calc(12px + env(safe-area-inset-bottom,0px));
+  border-top:1px solid var(--line); background:var(--surface-2);
+}
+.d-tools{display:flex; align-items:center; gap:2px; margin:-4px -8px 0 0; flex:none}
+.d-tools-sep{width:1px; height:20px; background:var(--line); margin:0 4px}

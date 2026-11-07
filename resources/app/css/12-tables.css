@@ -1,0 +1,39 @@
+/* ---------- tables ---------- */
+.tbl-scroll{overflow-x:auto; container-type:inline-size}
+table.rt{border-collapse:separate; border-spacing:0; width:100%}
+.rt th{
+  text-align:left; font-weight:600; font-size:12px; color:var(--ink-3); padding:10px 14px; background:var(--surface-2);
+  border-bottom:1px solid var(--line); white-space:nowrap; letter-spacing:.01em;
+}
+.rt th.r{text-align:right}
+.rt th.sortable{cursor:pointer; user-select:none; transition:color .12s}
+.rt th.sortable:hover{color:var(--ink)}
+.rt th .sort{display:inline-flex; vertical-align:-3px; margin-left:3px; color:var(--ink-4)}
+.rt th .sort .ic{width:13px; height:13px}
+.rt th[aria-sort]{color:var(--ink)}
+.rt th[aria-sort] .sort{color:var(--accent)}
+.rt td{padding:12px 14px; border-bottom:1px solid var(--line); vertical-align:middle}
+.rt tbody tr:last-child td{border-bottom:0}
+.rt tbody tr{cursor:pointer}
+.rt tbody tr:hover td{background:var(--surface-2)}
+.rt tbody tr.sel td{background:var(--accent-soft)}
+.rt tbody tr:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+
+.tag{
+  font-family:var(--font-mono); font-size:12px; font-weight:500; letter-spacing:-.01em; color:var(--ink);
+  background:var(--surface-2); border:1px solid var(--line-2); border-radius:4px; padding:2px 6px; white-space:nowrap;
+}
+.c-title{font-weight:550; line-height:1.3; color:var(--ink)}
+.c-mono{font-family:var(--font-mono); font-size:12px; color:var(--ink-2)}
+
+.pill{
+  display:inline-flex; align-items:center; gap:6px; height:22px; padding:0 9px; border-radius:999px;
+  font-size:12px; font-weight:550; line-height:1; white-space:nowrap; letter-spacing:.005em; vertical-align:middle;
+}
+.pill .dot{width:7px; height:7px; border-radius:50%; flex:none}
+.pill .ic{width:13px; height:13px; margin-left:-2px}
+.p-ok{background:var(--ok-soft); color:var(--ok)}
+.p-due{background:var(--due-soft); color:var(--due)}
+.p-over{background:var(--over-soft); color:var(--over)}
+.p-mute{background:var(--mute-soft); color:var(--mute)}
+.p-accent{background:var(--accent-soft); color:var(--accent-text)}
