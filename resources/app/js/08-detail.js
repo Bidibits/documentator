@@ -6,10 +6,12 @@ async function openDetail(id){
 
   const current = doc.versions[0];
   $("#d-title").textContent = doc.title;
-  $("#d-sub").replaceChildren(
+  // (replaceChildren turns a null into the text "null", so only real elements go in)
+  $("#d-sub").replaceChildren(...[
     h("span", {class: "tag"}, doc.code),
     h("span", {class: "pill p-mute"}, "Rev " + doc.rev),
-    doc.type ? h("span", {}, doc.type) : null);
+    doc.type ? h("span", {}, doc.type) : null,
+  ].filter(Boolean));
 
   // label / value pairs; a pair with no value is left out
   const kv = rows => h("dl", {class: "kv"}, rows.filter(r => r[1]).flatMap(r => [h("dt", {}, r[0]), h("dd", {class: r[2] || ""}, r[1])]));

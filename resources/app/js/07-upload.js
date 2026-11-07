@@ -1,6 +1,12 @@
 /* ---------- upload a document ---------- */
 // The code is only suggested (TSI-YY-MM-DD-NN): the person may keep it, edit it or type anything else.
-const FILE_TYPES = ".pdf,.docx,.png,.jpg,.jpeg";
+const FILE_TYPES = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.png,.jpg,.jpeg";
+const FILE_TYPES_WORDS = "PDF, Word, Excel, PowerPoint, CSV, text, PNG or JPG";
+
+// "lease_agreement_final.pdf" -> "lease agreement final": the title offered for a chosen file
+function titleFromFile(name){
+  return name.replace(/\.[^.]*$/, "").replace(/[_\s]+/g, " ").trim().slice(0, 200);
+}
 
 function formField(name, label, control, hint, required){
   return h("div", {class: "f"},
@@ -31,8 +37,12 @@ async function openUpload(){
   const syncSuggestion = () => { useSuggested.hidden = !suggested || code.value === suggested; };
   code.addEventListener("input", syncSuggestion);
   useSuggested.addEventListener("click", () => { code.value = suggested; syncSuggestion(); code.focus(); });
+  // the title follows the first file's name until the person types a title of their own
+  let titleTouched = false;
+  title.addEventListener("input", () => { titleTouched = title.value.trim() !== ""; });
   files.addEventListener("change", () => {
     picked.replaceChildren(...[...files.files].map(f => h("li", {}, h("span", {}, f.name), h("span", {}, fmtSize(f.size)))));
+    if(!titleTouched && files.files.length > 0) title.value = titleFromFile(files.files[0].name);
   });
 
   const show = text => { error.querySelector("span").textContent = text; error.hidden = false; error.scrollIntoView({block: "nearest"}); };
@@ -42,7 +52,10 @@ async function openUpload(){
     error,
     formField("code", "Code", h("div", {class: "inline"}, code, useSuggested),
       "Suggested as TSI-year-month-day-number. Keep it, change it, or type any code you like, for example the number on the paper.", true),
-    formField("title", "Title", title, null, true),
+    formField("files", "Files", files,
+      FILE_TYPES_WORDS + ". Up to 10 files of 25 MB each. Several files make one document with one code, like a stapled packet.", true),
+    picked,
+    formField("title", "Title", title, "Filled in from the first file's name; change it if you like.", true),
     h("div", {class: "grid2"},
       formField("doc_type", "Type", type, "Pick one from the list, or type a new kind."),
       formField("department", "Department", department, "Which department this belongs to.")),
@@ -50,11 +63,7 @@ async function openUpload(){
       formField("issued_on", "Issued on", issued),
       formField("expires_on", "Expires on", expires, "Leave empty if it does not expire.")),
     formField("location_note", "Physical location", location, "Where the paper copy is kept, for example Cabinet 3, shelf B. Just a note for now."),
-    formField("description", "Description", description),
-    h("div", {class: "fieldset-h"}, "Files"),
-    formField("files", "Files", files,
-      "PDF, Word (.docx), PNG or JPG. Up to 10 files of 25 MB each. Several files make one document with one code, like a stapled packet.", true),
-    picked);
+    formField("description", "Description", description));
 
   const save = async () => {
     error.hidden = true;
@@ -109,7 +118,7 @@ function uploadError(e, fields, takeSuggestion, fail){
   if(e.code === "invalid"){
     const field = e.data.field;
     if(field === "files") return fail(e.data.message === "type"
-      ? "One of the files is not a PDF, Word (.docx), PNG or JPG file."
+      ? "One of the files is not an accepted kind. Use " + FILE_TYPES_WORDS + " files, and keep the file's own extension."
       : "A file could not be uploaded. Each file may be up to 25 MB, and at most 10 files.", fields.files);
     if(field === "expires_on") return fail("The expiry date cannot be before the issue date.", fields.expires_on);
     if(field === "code") return fail("The code can be up to 64 characters and cannot contain line breaks.", fields.code);

@@ -120,8 +120,10 @@ class DocumentController extends Controller
      */
     private function keep(DocumentVersion $version, UploadedFile $upload, int $order): string
     {
-        $mime = (string) $upload->getMimeType();
-        $extension = $this->extensionOf($upload, $mime);
+        $extension = $this->extensionOf($upload);
+        // stored as what its extension says it is (the content was already checked to fit): a docx the detector
+        // called "zip" is still a docx
+        $mime = config("documentator.uploads.types.{$extension}.0");
         $sha256 = hash_file('sha256', $upload->getRealPath());
         $path = $upload->storeAs('documents/'.$version->document_id, Str::uuid().'.'.$extension, 'local');
         if ($path === false) {
@@ -153,23 +155,19 @@ class DocumentController extends Controller
     private function allowedType(): Closure
     {
         return function (string $attribute, mixed $file, Closure $fail): void {
-            if (! $file instanceof UploadedFile || $this->extensionOf($file, (string) $file->getMimeType()) === null) {
+            if (! $file instanceof UploadedFile || $this->extensionOf($file) === null) {
                 $fail('type');
             }
         };
     }
 
-    private function extensionOf(UploadedFile $file, string $mime): ?string
+    /** The file's extension when it is an allowed one and the content fits it, else null. */
+    private function extensionOf(UploadedFile $file): ?string
     {
         $extension = Str::lower($file->getClientOriginalExtension());
-        $types = config('documentator.uploads.types');
+        $allowed = config("documentator.uploads.types.{$extension}");
 
-        // a .docx is a zip, and some detectors can only say so
-        if ($extension === 'docx' && $mime === 'application/zip') {
-            return 'docx';
-        }
-
-        return in_array($extension, $types[$mime] ?? [], true) ? $extension : null;
+        return $allowed !== null && in_array((string) $file->getMimeType(), $allowed[1], true) ? $extension : null;
     }
 
     /** The name as shown and offered for download: no folders, no control characters, not too long. */

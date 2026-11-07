@@ -13,7 +13,7 @@
 .f .inline input{flex:1}
 .f .req{color:var(--over); margin-left:2px}
 .modal .banner{margin-bottom:14px}
-.picked{margin:2px 0 0; padding:0; list-style:none; display:flex; flex-direction:column; gap:4px}
+.picked{margin:-6px 0 16px; padding:0; list-style:none; display:flex; flex-direction:column; gap:4px}
 .picked li{display:flex; justify-content:space-between; gap:12px; padding:6px 10px; border-radius:var(--r); background:var(--surface-2); font-size:12.5px}
 .picked li span:first-child{overflow-wrap:anywhere}
 .picked li span:last-child{color:var(--ink-3); white-space:nowrap; font-variant-numeric:tabular-nums}

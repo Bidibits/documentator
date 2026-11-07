@@ -33,8 +33,16 @@ Settled calls, with the reason. Check here before changing the schema or the rul
 - **Physical location is a free-text note for now.** The Office > Cabinet > Shelf > Group > Folder tree comes with the masterfile.
 - **Department and type are free text** with the values already used offered as suggestions. They become real tables when
   department-scoped permissions need them.
-- Files: PDF, Word (.docx), PNG, JPG; checked by content, up to 10 files of 25 MB each; stored privately under made-up names
-  with a SHA-256; never public. Every download goes through the server and is audited.
+- Files: PDF, Word (doc, docx), Excel (xls, xlsx), PowerPoint (ppt, pptx), CSV, text, PNG, JPG. A name is never enough: the
+  content must fit the extension (`documentator.uploads.types`), and a file is stored and served as what its extension says.
+  Up to 10 files of 25 MB each; stored privately under made-up names with a SHA-256; never public. Every download goes
+  through the server and is audited. The list was widened on 8 Nov 2026 at the user's request ("doc, docx, excel, xls,
+  xlsx, especially pdf").
+- The upload form order is Code, Files, Title, then the rest. The title is filled from the first file's name (underscores
+  become spaces) until the person types one of their own. Issued on starts as today.
+- In-app viewing of files (a PDF/image preview) and editing Office files in the browser are **not built**. Editing in the
+  browser would mean an editor service (OnlyOffice, Collabora or Microsoft 365) and is a later decision; for now the way
+  to change a file is download, edit, upload as a new version.
 - Until roles exist, every signed-in person can register, read and download. Permissions come with the roles step.
 - Not built yet: uploading a new version (Rev 1...) with a change note, restoring a version, the duplicate-file warning,
   a per-document audit timeline.

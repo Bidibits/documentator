@@ -171,12 +171,73 @@ class DocumentTest extends TestCase
         $this->assertCount(3, Storage::disk('local')->allFiles());
     }
 
-    public function test_a_docx_is_accepted(): void
+    /** @return array<string, array{string, string, string}> file name, what a detector reports, what it is stored as */
+    public static function goodFiles(): array
+    {
+        $word = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        $sheet = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        $slides = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+
+        return [
+            'pdf' => ['a.pdf', 'application/pdf', 'application/pdf'],
+            'PDF in capitals' => ['A.PDF', 'application/pdf', 'application/pdf'],
+            'docx' => ['a.docx', $word, $word],
+            'docx seen only as a zip' => ['a.docx', 'application/zip', $word],
+            'xlsx' => ['budget.xlsx', $sheet, $sheet],
+            'xlsx seen only as a zip' => ['budget.xlsx', 'application/zip', $sheet],
+            'pptx' => ['deck.pptx', $slides, $slides],
+            'doc' => ['old.doc', 'application/msword', 'application/msword'],
+            'doc seen as the shared container' => ['old.doc', 'application/x-ole-storage', 'application/msword'],
+            'xls' => ['old.xls', 'application/vnd.ms-excel', 'application/vnd.ms-excel'],
+            'xls seen as the shared container' => ['old.xls', 'application/CDFV2', 'application/vnd.ms-excel'],
+            'ppt' => ['old.ppt', 'application/vnd.ms-powerpoint', 'application/vnd.ms-powerpoint'],
+            'csv' => ['rows.csv', 'text/csv', 'text/csv'],
+            'csv seen as plain text' => ['rows.csv', 'text/plain', 'text/csv'],
+            'txt' => ['note.txt', 'text/plain', 'text/plain'],
+            'png' => ['scan.png', 'image/png', 'image/png'],
+            'jpg' => ['scan.jpg', 'image/jpeg', 'image/jpeg'],
+            'jpeg' => ['scan.jpeg', 'image/jpeg', 'image/jpeg'],
+        ];
+    }
+
+    #[DataProvider('goodFiles')]
+    public function test_the_usual_office_files_are_accepted_and_stored_as_what_they_are(string $name, string $detected, string $stored): void
     {
         $this->signedIn();
-        $docx = UploadedFile::fake()->create('letter.docx', 12, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
 
-        $this->register([], [$docx])->assertCreated();
+        $this->register([], [UploadedFile::fake()->create($name, 12, $detected)])->assertCreated();
+
+        $this->assertSame($stored, DocumentFile::firstOrFail()->mime);
+    }
+
+    /** @return array<string, array{string, string}> */
+    public static function badFiles(): array
+    {
+        return [
+            'a program' => ['program.exe', 'application/x-msdownload'],
+            'a program renamed to pdf' => ['invoice.pdf', 'application/x-msdownload'],
+            'a program renamed to xlsx' => ['budget.xlsx', 'application/x-msdownload'],
+            'a pdf renamed to xlsx' => ['budget.xlsx', 'application/pdf'],
+            'a pdf renamed to docx' => ['letter.docx', 'application/pdf'],
+            'a spreadsheet renamed to pdf' => ['report.pdf', 'application/vnd.ms-excel'],
+            'a zip' => ['bundle.zip', 'application/zip'],
+            'a script' => ['run.js', 'text/javascript'],
+            'a web page' => ['page.html', 'text/html'],
+            'a script renamed to txt' => ['note.txt', 'text/x-php'],
+            'no extension' => ['README', 'application/pdf'],
+        ];
+    }
+
+    #[DataProvider('badFiles')]
+    public function test_other_files_and_files_that_are_not_what_their_name_says_are_refused(string $name, string $detected): void
+    {
+        $this->signedIn();
+
+        $this->register([], [UploadedFile::fake()->create($name, 12, $detected)])
+            ->assertStatus(422)->assertJsonPath('field', 'files')->assertJsonPath('message', 'type');
+
+        $this->assertSame(0, Document::count());
+        $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
     public function test_the_code_is_unique_whatever_its_case(): void
