@@ -1,0 +1,86 @@
+/* Look: the same colour, type and spacing tokens as PMS (Bench), light and dark. */
+:root{
+  --font-ui:"Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --bg:#EDF0F4;
+  --rail-hover:#E1E6EC;
+  --surface:#FFFFFF;
+  --surface-2:#F7F9FB;
+  --surface-3:#EEF2F6;
+  --ink:#0F1B2A;
+  --ink-2:#435267;
+  --ink-3:#5F6B7F;
+  --ink-4:#97A1B1;
+  --line:#E3E8EE;
+  --line-2:#CDD5DF;
+
+  --accent:#1D75BC;
+  --accent-hover:#17629F;
+  --accent-text:#17629F;
+  --accent-ink:#FFFFFF;
+  --accent-soft:#E8F1FA;
+  --accent-line:#BBD6EE;
+
+  --ok:#137A4B;   --ok-soft:#E4F4EB;   --ok-mark:#22A06B;
+  --due:#8F5C00;  --due-soft:#FCF0D7;  --due-mark:#E39A0B;
+  --over:#B42318; --over-soft:#FDEAE7; --over-mark:#DE4A3C;
+  --mute:#5A687C; --mute-soft:#ECEFF3; --mute-mark:#98A2B3;
+  --badge-bg:#C8321F; --badge-fg:#FFFFFF;
+
+  --ring:rgba(29,117,188,.28);
+  --scrim:rgba(12,22,34,.40);
+  --shadow-xs:0 1px 2px rgba(15,27,42,.05);
+  --shadow-sm:0 1px 3px rgba(15,27,42,.09), 0 1px 2px rgba(15,27,42,.04);
+  --shadow-lg:0 24px 56px -16px rgba(15,27,42,.32), 0 4px 12px rgba(15,27,42,.06);
+  --chev:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237D8899' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+
+  --av-s:60%; --av-bg:90%; --av-fg:30%;
+
+  --r-sm:6px; --r:8px; --r-lg:12px; --r-xl:16px;
+  --rail:252px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#080C12; --rail-hover:#141B24;
+    --surface:#10161E; --surface-2:#141B24; --surface-3:#1B2430;
+    --ink:#E6EBF2; --ink-2:#AAB5C4; --ink-3:#8793A5; --ink-4:#5C697B;
+    --line:#202935; --line-2:#2D3846;
+    --accent:#4EA3E6; --accent-hover:#6DB4EC; --accent-text:#7BBDF0; --accent-ink:#06121D;
+    --accent-soft:#12263A; --accent-line:#244A6D;
+    --ok:#56C590; --ok-soft:#0E2A1E; --ok-mark:#3DB97D;
+    --due:#E6B455; --due-soft:#2A2211; --due-mark:#E3A23A;
+    --over:#F38A80; --over-soft:#341A18; --over-mark:#EC6A5E;
+    --mute:#95A1B2; --mute-soft:#1C232D; --mute-mark:#65738A;
+    --badge-bg:#C93D31; --badge-fg:#FFFFFF;
+    --ring:rgba(78,163,230,.40);
+    --scrim:rgba(0,0,0,.62);
+    --shadow-xs:0 1px 2px rgba(0,0,0,.4);
+    --shadow-sm:0 1px 3px rgba(0,0,0,.5);
+    --shadow-lg:0 28px 64px -16px rgba(0,0,0,.85), 0 4px 14px rgba(0,0,0,.5);
+    --av-s:36%; --av-bg:22%; --av-fg:84%;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#080C12; --rail-hover:#141B24;
+  --surface:#10161E; --surface-2:#141B24; --surface-3:#1B2430;
+  --ink:#E6EBF2; --ink-2:#AAB5C4; --ink-3:#8793A5; --ink-4:#5C697B;
+  --line:#202935; --line-2:#2D3846;
+  --accent:#4EA3E6; --accent-hover:#6DB4EC; --accent-text:#7BBDF0; --accent-ink:#06121D;
+  --accent-soft:#12263A; --accent-line:#244A6D;
+  --ok:#56C590; --ok-soft:#0E2A1E; --ok-mark:#3DB97D;
+  --due:#E6B455; --due-soft:#2A2211; --due-mark:#E3A23A;
+  --over:#F38A80; --over-soft:#341A18; --over-mark:#EC6A5E;
+  --mute:#95A1B2; --mute-soft:#1C232D; --mute-mark:#65738A;
+  --badge-bg:#C93D31; --badge-fg:#FFFFFF;
+  --ring:rgba(78,163,230,.40);
+  --scrim:rgba(0,0,0,.62);
+  --shadow-xs:0 1px 2px rgba(0,0,0,.4);
+  --shadow-sm:0 1px 3px rgba(0,0,0,.5);
+  --shadow-lg:0 28px 64px -16px rgba(0,0,0,.85), 0 4px 14px rgba(0,0,0,.5);
+  --av-s:36%; --av-bg:22%; --av-fg:84%;
+  color-scheme:dark;
+}
+

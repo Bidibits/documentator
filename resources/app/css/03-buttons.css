@@ -1,0 +1,26 @@
+/* ---------- buttons ---------- */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:7px; height:36px; padding:0 14px;
+  border:1px solid var(--line-2); background:var(--surface); color:var(--ink); border-radius:var(--r);
+  font-weight:550; font-size:13.5px; line-height:1; white-space:nowrap; box-shadow:var(--shadow-xs);
+  transition:background .12s, border-color .12s, color .12s, box-shadow .12s;
+}
+.btn .ic{width:16px; height:16px; color:var(--ink-3)}
+.btn:hover{background:var(--surface-2); border-color:var(--ink-4)}
+.btn:active{background:var(--surface-3)}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.btn.primary .ic{color:currentColor}
+.btn.primary:hover{background:var(--accent-hover); border-color:var(--accent-hover)}
+.btn.ghost{border-color:transparent; background:transparent; box-shadow:none; color:var(--ink-2)}
+.btn.ghost:hover{background:var(--surface-3); color:var(--ink)}
+.btn.danger{color:var(--over)}
+.btn.danger .ic{color:currentColor}
+.btn.danger:hover{background:var(--over-soft); border-color:color-mix(in srgb, var(--over) 45%, transparent)}
+.btn.danger-solid{background:var(--badge-bg); border-color:var(--badge-bg); color:var(--badge-fg)}
+.btn.danger-solid:hover{background:color-mix(in srgb, var(--badge-bg) 86%, #000); border-color:transparent}
+.btn.sm{height:30px; padding:0 10px; font-size:12.5px; gap:6px; border-radius:7px}
+.btn.sm .ic{width:14px; height:14px}
+.btn.icon{width:36px; padding:0}
+.btn.sm.icon{width:30px}
+.btn:disabled{opacity:.5; cursor:default; pointer-events:none}
+

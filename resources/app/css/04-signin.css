@@ -1,0 +1,31 @@
+/* ---------- forms, brand mark, sign-in (the card is PMS's, with Documentator's name) ---------- */
+.f{display:flex; flex-direction:column; gap:6px; margin-bottom:16px; min-width:0}
+.f label{font-size:13px; color:var(--ink-2); font-weight:550}
+.f input{
+  width:100%; height:38px; padding:0 11px; border:1px solid var(--line-2); border-radius:var(--r); background:var(--surface);
+  color:var(--ink); font-size:14px; transition:border-color .12s, box-shadow .12s;
+}
+.f input:hover{border-color:var(--ink-4)}
+.f input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--ring)}
+.f input::placeholder{color:var(--ink-4)}
+
+.sb-mark{
+  display:inline-grid; place-items:center; flex:none; width:38px; height:38px; border-radius:10px;
+  background:var(--accent); color:var(--accent-ink);
+}
+.sb-mark .ic{width:20px; height:20px; stroke-width:2}
+
+.signin{position:fixed; inset:0; z-index:200; display:grid; place-items:center; padding:24px 16px; overflow:auto; background:var(--bg)}
+.signin[hidden]{display:none}
+.si-card{width:min(400px, 100%); padding:28px 28px 20px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-xl); box-shadow:var(--shadow-lg)}
+.si-brand{display:flex; align-items:center; gap:12px; margin-bottom:22px}
+.si-brand .t{display:flex; flex-direction:column; min-width:0}
+.si-brand b{font-size:15px}
+.si-brand .t span{font-size:12.5px; color:var(--ink-3)}
+.si-card h1{font-size:22px; line-height:1.2; margin:0 0 6px}
+.si-sub{margin:0 0 18px; font-size:13.5px; line-height:1.5; color:var(--ink-3)}
+.si-err{margin:0 0 12px; padding:9px 12px; border-radius:var(--r); background:var(--over-soft); color:var(--over); font-size:13px; line-height:1.45}
+.si-err[hidden]{display:none}
+.si-go{width:100%; height:40px; margin-top:4px}
+.si-foot{margin:14px 0 0; font-size:12.5px; line-height:1.5; color:var(--ink-3)}
+html.signed-out .app{visibility:hidden}

@@ -11,6 +11,9 @@ return [
     |
     */
 
+    // the page scripts/build-app.mjs builds from resources/app (npm run build)
+    'app_page' => resource_path('app/build/index.html'),
+
     'session_max_days' => (int) env('DOCUMENTATOR_SESSION_MAX_DAYS', 7),
 
     // wrong passwords lock the username, and separately the visitor's address, for this long

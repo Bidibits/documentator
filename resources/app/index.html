@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" class="signed-out">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Documentator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wdth,wght@75..100,400..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- documentator:head -->
+</head>
+<body>
+
+<svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+  <symbol id="i-docs" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></symbol>
+</svg>
+
+<div class="app" id="app" hidden>
+  <header class="topbar">
+    <div class="brand">
+      <span class="sb-mark" aria-hidden="true"><svg class="ic"><use href="#i-docs"></use></svg></span>
+      <div class="t"><b>Documentator</b><span>Trustera Solutions Inc.</span></div>
+    </div>
+    <div class="who">
+      <span class="who-name" id="who-name"></span>
+      <button class="btn sm" id="who-out" type="button"><svg class="ic"><use href="#i-logout"></use></svg>Sign out</button>
+    </div>
+  </header>
+  <main class="home">
+    <h1>You are signed in</h1>
+    <p class="muted">Documents, versions and the audit log come in the next steps. This page only shows that sign-in works.</p>
+  </main>
+</div>
+
+<div class="signin" id="signin" hidden>
+  <form class="si-card" id="si-form" novalidate aria-labelledby="si-title">
+    <div class="si-brand">
+      <span class="sb-mark" aria-hidden="true"><svg class="ic"><use href="#i-docs"></use></svg></span>
+      <div class="t"><b>Documentator</b><span>Document management &middot; Trustera Solutions Inc.</span></div>
+    </div>
+    <h1 id="si-title">Sign in</h1>
+    <p class="si-sub" id="si-msg">Use the username and password your administrator gave you.</p>
+    <div class="f"><label for="si-user">Username</label><input id="si-user" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="32"></div>
+    <div class="f"><label for="si-pass">Password</label><input id="si-pass" type="password" autocomplete="current-password" maxlength="128"></div>
+    <div class="si-err" id="si-err" role="alert" hidden></div>
+    <button class="btn primary si-go" id="si-go" type="submit">Sign in</button>
+    <p class="si-foot">Forgot your password? Ask an administrator to set a new one.</p>
+  </form>
+</div>
+
+<!-- documentator:app -->
+</body>
+</html>
