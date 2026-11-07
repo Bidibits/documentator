@@ -8,23 +8,25 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
+     *
+     * Edited in place from the Laravel starter until the first real install: sign-in is by username, there is no
+     * e-mail, verification or remember-me token. auth_source / external_id let an account be linked to OneHub later.
      */
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+            $table->string('username', 32)->unique();
             $table->string('name');
-            $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->rememberToken();
+            $table->boolean('active')->default(true);
+            $table->string('auth_source', 16)->default('local');
+            $table->string('external_id')->nullable();
+            $table->timestamp('last_login_at')->nullable();
+            $table->timestamp('password_changed_at')->nullable();
             $table->timestamps();
-        });
 
-        Schema::create('password_reset_tokens', function (Blueprint $table) {
-            $table->string('email')->primary();
-            $table->string('token');
-            $table->timestamp('created_at')->nullable();
+            $table->unique(['auth_source', 'external_id']);
         });
 
         Schema::create('sessions', function (Blueprint $table) {
@@ -43,7 +45,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('users');
-        Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
     }
 };
