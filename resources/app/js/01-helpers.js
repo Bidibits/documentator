@@ -45,6 +45,11 @@ function fmtSize(bytes){
   if(bytes < 1024 * 1024) return (bytes / 1024).toFixed(bytes < 10240 ? 1 : 0) + " KB";
   return (bytes / 1024 / 1024).toFixed(1) + " MB";
 }
+// today as the date inputs want it, "YYYY-MM-DD", on the viewer's calendar
+function todayISO(){
+  const d = new Date(), pad = n => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+}
 // whole days from today (viewer's calendar) to a "YYYY-MM-DD" day: negative once it has passed
 function daysUntil(day){
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day || "");

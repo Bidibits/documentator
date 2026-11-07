@@ -10,16 +10,18 @@ function formField(name, label, control, hint, required){
 }
 
 async function openUpload(){
-  let suggested = "";
-  try{ suggested = (await api("GET", "/api/documents/suggest-code")).code || ""; }catch(e){ if(e.status === 401) return; }
+  let suggested = "", suggestFailed = null;
+  try{ suggested = (await api("GET", "/api/documents/suggest-code")).code || ""; }
+  catch(e){ if(e.status === 401) return; suggestFailed = e; }
+  fillSuggestionLists();
 
   const error = h("div", {class: "banner error", role: "alert", hidden: true}, icon("alert-circle"), h("span", {}));
   const code = h("input", {id: "fld-code", name: "code", type: "text", maxlength: "64", value: suggested, autocomplete: "off", spellcheck: "false"});
   const useSuggested = h("button", {class: "btn sm", type: "button", hidden: true}, "Use suggestion");
   const title = h("input", {id: "fld-title", name: "title", type: "text", maxlength: "200", autocomplete: "off"});
-  const type = h("input", {id: "fld-doc_type", name: "doc_type", type: "text", maxlength: "64", list: "dl-types", autocomplete: "off"});
-  const department = h("input", {id: "fld-department", name: "department", type: "text", maxlength: "100", list: "dl-depts", autocomplete: "off"});
-  const issued = h("input", {id: "fld-issued_on", name: "issued_on", type: "date"});
+  const type = h("input", {id: "fld-doc_type", name: "doc_type", type: "text", maxlength: "64", list: "dl-types", autocomplete: "off", placeholder: "Choose from the list or type your own"});
+  const department = h("input", {id: "fld-department", name: "department", type: "text", maxlength: "100", list: "dl-depts", autocomplete: "off", placeholder: docs.departments.length ? "Choose from the list or type your own" : "Type the department"});
+  const issued = h("input", {id: "fld-issued_on", name: "issued_on", type: "date", value: todayISO()});
   const expires = h("input", {id: "fld-expires_on", name: "expires_on", type: "date"});
   const location = h("input", {id: "fld-location_note", name: "location_note", type: "text", maxlength: "200", autocomplete: "off"});
   const description = h("textarea", {id: "fld-description", name: "description", maxlength: "2000"});
@@ -42,7 +44,7 @@ async function openUpload(){
       "Suggested as TSI-year-month-day-number. Keep it, change it, or type any code you like, for example the number on the paper.", true),
     formField("title", "Title", title, null, true),
     h("div", {class: "grid2"},
-      formField("doc_type", "Type", type, "For example Contract, Permit, Form, Resolution."),
+      formField("doc_type", "Type", type, "Pick one from the list, or type a new kind."),
       formField("department", "Department", department, "Which department this belongs to.")),
     h("div", {class: "grid2"},
       formField("issued_on", "Issued on", issued),
@@ -89,6 +91,11 @@ async function openUpload(){
 
   openModal("Upload document", body, save, "Upload");
   syncSuggestion();
+  if(suggestFailed){
+    show(suggestFailed.code === "offline"
+      ? "The server did not answer, so no code could be suggested. Check the connection; you can also type a code yourself."
+      : "No code could be suggested. You can type a code yourself.");
+  }
 }
 
 function uploadError(e, fields, takeSuggestion, fail){
