@@ -6,30 +6,12 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Testing\TestResponse;
+use Tests\Concerns\SignsIn;
 use Tests\TestCase;
 
 class SignInTest extends TestCase
 {
-    use RefreshDatabase;
-
-    private const HEADERS = ['X-Documentator' => '1'];
-
-    private function api(string $method, string $uri, array $data = [], array $headers = []): TestResponse
-    {
-        return $this->json($method, $uri, $data, self::HEADERS + $headers);
-    }
-
-    /** Signs in and makes the next requests of this test carry the session cookie. */
-    private function signIn(string $username, string $password = 'correct-horse'): TestResponse
-    {
-        $response = $this->api('POST', '/api/login', ['username' => $username, 'password' => $password]);
-        if ($cookie = $response->getCookie(config('session.cookie'), false)) {
-            $this->withUnencryptedCookie(config('session.cookie'), $cookie->getValue());
-        }
-
-        return $response;
-    }
+    use RefreshDatabase, SignsIn;
 
     private function actions(): array
     {

@@ -5,12 +5,15 @@ use App\Http\Middleware\GuardApiRequest;
 use App\Http\Middleware\RequireSignIn;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -32,6 +35,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias(['documentator.signed-in' => RequireSignIn::class]);
+
+        // a stranger gets 401 before any record is looked up, so a 404 can never tell them which ids exist
+        $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: RequireSignIn::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->dontReport(ApiError::class);
@@ -43,6 +49,12 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             $error = match (true) {
+                // {"error": "invalid", "field": "title", "message": "..."}: the first thing wrong with the form
+                $e instanceof ValidationException => new ApiError(422, 'invalid', [
+                    'field' => explode('.', (string) array_key_first($e->errors()))[0],
+                    'message' => (string) collect($e->errors())->flatten()->first(),
+                ]),
+                $e instanceof ModelNotFoundException,
                 $e instanceof NotFoundHttpException => new ApiError(404, 'route'),
                 $e instanceof MethodNotAllowedHttpException => new ApiError(405, 'method'),
                 $e instanceof PostTooLargeException => new ApiError(413, 'too_large'),

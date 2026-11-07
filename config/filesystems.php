@@ -33,7 +33,8 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // never: documents are private and leave only through FileController, which checks the sign-in and audits
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],

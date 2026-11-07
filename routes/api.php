@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\DocumentController;
+use App\Http\Controllers\Api\FileController;
 use App\Http\Controllers\Api\SessionController;
 use Illuminate\Support\Facades\Route;
 
@@ -14,5 +16,10 @@ Route::post('logout', [SessionController::class, 'logout']);
 
 // Everything that needs a signed-in person goes inside here.
 Route::middleware('documentator.signed-in')->group(function () {
-    //
+    Route::get('documents', [DocumentController::class, 'index']);
+    Route::get('documents/suggest-code', [DocumentController::class, 'suggestCode']);
+    Route::post('documents', [DocumentController::class, 'store']);
+    Route::get('documents/{document}', [DocumentController::class, 'show'])->whereNumber('document');
+
+    Route::get('files/{file}', [FileController::class, 'download'])->whereNumber('file');
 });
