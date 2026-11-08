@@ -1,4 +1,4 @@
-/* ---------- forms, brand mark, sign-in (the card is PMS's, with Documentanator's name) ---------- */
+/* ---------- forms, brand mark, sign-in (the card is PMS's, with Digital Information Keeper's name) ---------- */
 .f{display:flex; flex-direction:column; gap:6px; margin-bottom:16px; min-width:0}
 .f label{font-size:13px; color:var(--ink-2); font-weight:550}
 .f input{

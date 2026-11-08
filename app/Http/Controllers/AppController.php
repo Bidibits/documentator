@@ -21,7 +21,7 @@ class AppController extends Controller
     {
         $page = config('documentator.app_page');
         if (! is_file($page)) {
-            return response('The Documentanator app is not built yet. Run: npm run build', 503)
+            return response('The Digital Information Keeper app is not built yet. Run: npm run build', 503)
                 ->header('Content-Type', 'text/plain; charset=utf-8');
         }
 
