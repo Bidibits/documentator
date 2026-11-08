@@ -36,7 +36,7 @@ return [
         'max_kilobytes' => 25 * 1024,
         // Any kind of file may be kept, except programs and scripts a computer could run by itself. Files are always
         // stored under a name the server makes up and sent as downloads, never shown as a page.
-        'blocked' => ['exe', 'msi', 'bat', 'cmd', 'com', 'scr', 'pif', 'vbs', 'vbe', 'js', 'jse', 'wsf', 'wsh', 'ps1', 'psm1', 'jar', 'dll', 'lnk', 'hta', 'cpl', 'reg', 'msc', 'sh', 'app', 'apk', 'appx', 'msix'],
+        'blocked' => ['exe', 'msi', 'msp', 'mst', 'bat', 'cmd', 'com', 'scr', 'pif', 'vb', 'vbs', 'vbe', 'js', 'jse', 'ws', 'wsc', 'wsf', 'wsh', 'ps1', 'psm1', 'psd1', 'ps1xml', 'jar', 'dll', 'lnk', 'url', 'scf', 'hta', 'chm', 'inf', 'cpl', 'reg', 'msc', 'gadget', 'application', 'sh', 'app', 'apk', 'appx', 'msix'],
         // By extension, for the kinds we know: the type a file is stored and downloaded as, and what the server may detect
         // inside it. For these a name alone is never enough: the content must be one of these. Any other kind is kept as
         // it is and downloaded as application/octet-stream. The old Office formats (doc, xls, ppt) share one

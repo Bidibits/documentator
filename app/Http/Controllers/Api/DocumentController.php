@@ -516,12 +516,22 @@ class DocumentController extends Controller
         return $known === null || in_array((string) $file->getMimeType(), $known[1], true) ? $extension : null;
     }
 
-    /** The name as shown and offered for download: no folders, no control characters, not too long. */
+    /**
+     * The name as shown and offered for download: no folders, no control characters, no right-to-left tricks (which can
+     * make "report[RLO]fdp.exe" read as "reportexe.pdf"), not too long, and a long name is shortened before its
+     * extension, so it still ends the way the stored file does.
+     */
     private function cleanName(string $name, string $extension): string
     {
         $name = basename(str_replace('\\', '/', $name));
         $name = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $name) ?? '';
-        $name = trim(Str::limit($name, 150, ''));
+        $name = preg_replace('/[\x{200E}\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}]/u', '', $name) ?? '';
+        $name = trim($name);
+        if (mb_strlen($name) > 150) {
+            $suffix = '.'.$extension;
+            $stem = str_ends_with(Str::lower($name), $suffix) ? mb_substr($name, 0, mb_strlen($name) - mb_strlen($suffix)) : $name;
+            $name = trim(Str::limit($stem, 150 - mb_strlen($suffix), '')).$suffix;
+        }
 
         return $name === '' || $name === '.'.$extension ? 'file.'.$extension : $name;
     }

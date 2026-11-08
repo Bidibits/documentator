@@ -334,3 +334,18 @@ Settled calls, with the reason. Check here before changing the schema or the rul
   database decides and only ids are held, about 0.1 s, and the nightly run on 20,000 due versions takes a few seconds).
 - The dev server (`scripts\dev.cmd`) keeps compiled PHP and Laravel's config and routes cached inside its container; see the notes
   at the top of that file. Odd 1 to 4 second answers on a cold worker are that server starting a process, not the app.
+
+## Hardening pass (9 Nov 2026, asked for by the user: "improve possible problems, do not break anything")
+
+- **Archive and restore of one version never run at once** (a cache lock per version, `documentator:version:<id>`; a second
+  attempt gets 409 `busy`, and the Archiving panel says so). Before this, two restores of the same version (two tabs, two people,
+  or the night run meeting a manual one) could end with the zip deleted by one and the restored files deleted by the other.
+- **File names:** right-to-left and other direction-control characters are removed (they can make `x[RLO]fdp.exe` read as
+  `xexe.pdf`), and a name over 150 characters is shortened before its extension, so it still ends the way the stored file does.
+- **More programs refused on upload:** `msp, mst, vb, ws, wsc, psd1, ps1xml, url, scf, chm, inf, gadget, application` joined the
+  blocked list.
+- **Headers:** the page also sends `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and `Referrer-Policy: no-referrer`;
+  every API answer sends `nosniff` and `no-referrer`.
+- Two people making the same username at the same moment now get 409 `username_taken` instead of a server error.
+- **For a real server later (not changed, the dev setup needs them as they are):** `APP_DEBUG=false`, `APP_ENV=production`, HTTPS
+  with `SESSION_SECURE_COOKIE=true`.

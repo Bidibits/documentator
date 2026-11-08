@@ -27,6 +27,11 @@ class GuardApiRequest
             throw ApiError::forbidden('origin');
         }
 
-        return $next($request);
+        $response = $next($request);
+        // an answer is only ever read by the app as what it says it is
+        $response->headers->set('X-Content-Type-Options', 'nosniff');
+        $response->headers->set('Referrer-Policy', 'no-referrer');
+
+        return $response;
     }
 }

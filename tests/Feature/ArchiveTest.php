@@ -7,6 +7,7 @@ use App\Models\DocumentVersion;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
@@ -146,6 +147,24 @@ class ArchiveTest extends TestCase
         $this->restore($v0)->assertStatus(409)->assertExactJson(['error' => 'not_archived']);
         $this->archive($v0)->assertOk();
         $this->archive($v0)->assertStatus(409)->assertExactJson(['error' => 'already_archived']);
+    }
+
+    public function test_a_second_archive_or_restore_while_one_is_running_is_refused_as_busy_and_changes_nothing(): void
+    {
+        [, $v0] = $this->document();
+        $paths = DocumentFile::where('version_id', $v0)->pluck('storage_path')->all();
+        $lock = Cache::lock('documentator:version:'.$v0, 60);
+        $this->assertTrue($lock->get());   // as if another request were working on this version
+
+        $this->archive($v0)->assertStatus(409)->assertExactJson(['error' => 'busy']);
+        $this->assertNull(DocumentVersion::findOrFail($v0)->archived_at);
+        foreach ($paths as $path) {
+            Storage::disk('local')->assertExists($path);
+        }
+
+        $lock->release();
+        $this->archive($v0)->assertOk();
+        $this->restore($v0)->assertOk();   // the lock was let go after each
     }
 
     public function test_a_version_with_a_missing_file_is_not_archived_and_leaves_no_zip(): void

@@ -240,7 +240,8 @@ class DocumentTest extends TestCase
     /** @return array<string, array{string}> */
     public static function programs(): array
     {
-        return ['a program' => ['program.exe'], 'a script' => ['run.js'], 'a shell script' => ['setup.sh'], 'a batch file' => ['go.BAT'], 'a shortcut' => ['x.lnk']];
+        return ['a program' => ['program.exe'], 'a script' => ['run.js'], 'a shell script' => ['setup.sh'], 'a batch file' => ['go.BAT'], 'a shortcut' => ['x.lnk'],
+            'a help file' => ['manual.chm'], 'a web shortcut' => ['site.url'], 'a script component' => ['x.wsc']];
     }
 
     #[DataProvider('programs')]
@@ -383,6 +384,18 @@ class DocumentTest extends TestCase
         $file = DocumentFile::firstOrFail();
         $this->assertSame('evil name.pdf', $file->original_name);
         $this->assertMatchesRegularExpression('#^documents/\d+/[0-9a-f-]{36}\.pdf$#', $file->storage_path);
+    }
+
+    public function test_a_long_name_keeps_its_extension_and_right_to_left_tricks_are_removed(): void
+    {
+        $this->signedIn();
+
+        $this->register([], [$this->pdf(str_repeat('a', 200).'.pdf'), $this->pdf("report\u{202E}txt.pdf")])->assertCreated();
+
+        $names = DocumentFile::orderBy('sort_order')->pluck('original_name')->all();
+        $this->assertSame(150, mb_strlen($names[0]));
+        $this->assertStringEndsWith('.pdf', $names[0]);
+        $this->assertSame('reporttxt.pdf', $names[1]);
     }
 
     // ---- reading ----

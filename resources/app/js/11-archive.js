@@ -110,6 +110,7 @@ function archiveErrorWords(e, row){
   if(e.code === "file_missing") return name + ": a file" + (e.data && e.data.file ? " (" + e.data.file + ")" : "") + " is missing from the server's storage, so it was left as it was.";
   if(e.code === "archive_missing") return name + ": its zip is missing from the server's storage.";
   if(e.code === "archive_failed") return name + ": the zip could not be made or did not match the files, so nothing was changed.";
+  if(e.code === "busy") return name + ": someone else is archiving or taking it out right now. Try again in a moment.";
   if(e.code === "already_archived" || e.code === "not_archived") return null;   // already as wanted: not a problem
   return name + ": " + errorWords(e);
 }

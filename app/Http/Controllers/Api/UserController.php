@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\AuditLog;
 use App\Support\ChangeLog;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -46,14 +47,18 @@ class UserController extends Controller
         }
 
         $actor = SessionUser::resolve($request);
-        $user = DB::transaction(function () use ($data, $actor) {
-            $user = new User(['username' => $data['username'], 'name' => trim($data['name'])]);
-            $user->forceFill(['role' => $data['role'], 'password' => $data['password'], 'must_change_password' => true, 'password_changed_at' => now()->utc()])->save();
-            ChangeLog::created('users', $user->id, $this->row($user), $actor);
-            AuditLog::record($actor, 'user.created', 'role '.Access::label($data['role']), entityType: 'user', entityId: (string) $user->id);
+        try {
+            $user = DB::transaction(function () use ($data, $actor) {
+                $user = new User(['username' => $data['username'], 'name' => trim($data['name'])]);
+                $user->forceFill(['role' => $data['role'], 'password' => $data['password'], 'must_change_password' => true, 'password_changed_at' => now()->utc()])->save();
+                ChangeLog::created('users', $user->id, $this->row($user), $actor);
+                AuditLog::record($actor, 'user.created', 'role '.Access::label($data['role']), entityType: 'user', entityId: (string) $user->id);
 
-            return $user;
-        });
+                return $user;
+            });
+        } catch (UniqueConstraintViolationException) {
+            throw new ApiError(409, 'username_taken');   // made by someone else at the same moment
+        }
 
         return response()->json(['user' => $user->fresh()->view()], 201);
     }

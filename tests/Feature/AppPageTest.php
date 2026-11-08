@@ -35,6 +35,9 @@ class AppPageTest extends TestCase
         $this->assertStringContainsString('object-src blob:', $csp);
         $this->assertStringNotContainsString("frame-src 'self'", $csp);
         $this->assertStringContainsString('no-cache', $response->headers->get('Cache-Control'));
+        $this->assertSame('nosniff', $response->headers->get('X-Content-Type-Options'));
+        $this->assertSame('DENY', $response->headers->get('X-Frame-Options'));
+        $this->assertSame('no-referrer', $response->headers->get('Referrer-Policy'));
     }
 
     public function test_index_html_is_the_same_page(): void

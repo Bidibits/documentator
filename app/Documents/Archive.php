@@ -8,6 +8,9 @@ use App\Models\DocumentVersion;
 use App\Models\User;
 use App\Support\AuditLog;
 use App\Support\ChangeLog;
+use Closure;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -27,7 +30,41 @@ final class Archive
         return $file->id.'.'.pathinfo($file->storage_path, PATHINFO_EXTENSION);
     }
 
+    /**
+     * Archiving and restoring one version never run at the same time (two tabs, two people, or the night run meeting a
+     * manual restore): without this, a restore that failed half way could delete the files another restore had just
+     * put back, after that one had already removed the zip. A second attempt while one is running is refused as "busy".
+     * The version is read again inside the lock, so the checks below see what the first one did.
+     */
+    private static function exclusive(DocumentVersion $version, Closure $work): void
+    {
+        $lock = Cache::lock('documentator:version:'.$version->id, 900);
+        if (! $lock->get()) {
+            throw new ApiError(409, 'busy');
+        }
+        try {
+            try {
+                $version->refresh();
+            } catch (ModelNotFoundException) {
+                throw new ApiError(404, 'route');   // its document was deleted meanwhile
+            }
+            $work();
+        } finally {
+            $lock->release();
+        }
+    }
+
     public static function archive(DocumentVersion $version, ?User $user, string $source = ChangeLog::MANUAL): void
+    {
+        self::exclusive($version, fn () => self::pack($version, $user, $source));
+    }
+
+    public static function restore(DocumentVersion $version, ?User $user, string $source = ChangeLog::MANUAL): void
+    {
+        self::exclusive($version, fn () => self::unpack($version, $user, $source));
+    }
+
+    private static function pack(DocumentVersion $version, ?User $user, string $source): void
     {
         $version->loadMissing(['document', 'files']);
         $document = $version->document;
@@ -84,7 +121,7 @@ final class Archive
         }
     }
 
-    public static function restore(DocumentVersion $version, ?User $user, string $source = ChangeLog::MANUAL): void
+    private static function unpack(DocumentVersion $version, ?User $user, string $source): void
     {
         $version->loadMissing(['document', 'files']);
         if ($version->archived_at === null) {

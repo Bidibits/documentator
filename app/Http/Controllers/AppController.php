@@ -29,6 +29,10 @@ class AppController extends Controller
             'Content-Type' => 'text/html; charset=utf-8',
             'Cache-Control' => 'no-cache',
             'Content-Security-Policy' => self::CSP,
+            // the same safety for browsers that ignore parts of the policy, and no page address handed to other sites
+            'X-Content-Type-Options' => 'nosniff',
+            'X-Frame-Options' => 'DENY',
+            'Referrer-Policy' => 'no-referrer',
         ]);
     }
 }
