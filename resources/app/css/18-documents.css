@@ -177,17 +177,22 @@
 .gcard:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
 .gcard .g-ic{display:flex; align-items:center; justify-content:space-between; gap:8px; color:var(--ink-3)}
 .gcard .g-ic .ic{width:22px; height:22px; flex:none}
-.gcard.folder{display:grid; grid-template-columns:auto minmax(0, 1fr); column-gap:10px; row-gap:0; align-items:center; padding:8px 12px}
+.gcard.folder{display:grid; grid-template-columns:auto minmax(0, 1fr) auto; column-gap:10px; row-gap:0; align-items:center; padding:8px 12px}
 .gcard.folder .g-ic{grid-row:1 / span 2; color:var(--accent)}
 .gcard.folder .g-ic .ic{width:30px; height:30px}
 .gcard.folder .g-title{grid-column:2; -webkit-line-clamp:1}
 .gcard.folder .g-sub{grid-column:2}
+.g-more{grid-column:3; grid-row:1 / span 2; display:grid; place-items:center; width:28px; height:28px; border:0; border-radius:var(--r); background:transparent; color:var(--ink-3); cursor:pointer}
+.g-more .ic{width:18px; height:18px}
+.g-more:hover, .g-more[aria-expanded="true"]{background:var(--surface-2); color:var(--ink)}
+.g-more:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+.menu{position:fixed; z-index:95; min-width:140px; padding:4px; background:var(--surface); border:1px solid var(--line-2); border-radius:var(--r); box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.menu-item{display:block; width:100%; text-align:left; padding:7px 10px; border:0; border-radius:6px; background:none; font:inherit; font-size:13.5px; color:var(--ink); cursor:pointer}
+.menu-item:hover, .menu-item:focus-visible{background:var(--surface-2); outline:none}
+.menu-item.danger{color:var(--over)}
 .g-title{font-weight:600; line-height:1.3; overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
 .g-sub{font-size:12px; color:var(--ink-3); overflow-wrap:anywhere}
 .g-pills{display:flex; gap:6px; flex-wrap:wrap; margin-top:auto; padding-top:2px}
-.g-acts{display:none; gap:4px; position:absolute; top:5px; right:5px; padding:2px; background:var(--surface); border-radius:var(--r)}
-.gcard:hover .g-acts, .gcard:focus .g-acts, .gcard:focus-within .g-acts{display:flex}
-@media (hover:none){ .g-acts{display:flex; position:static; grid-column:1 / -1; padding:4px 0 0; background:none} }
 .g-label{grid-column:1 / -1; font-size:11.5px; font-weight:650; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-3); margin-top:4px}
 .g-label:first-child{margin-top:0}
 .folder-info{color:var(--ink-3); font-size:13px}

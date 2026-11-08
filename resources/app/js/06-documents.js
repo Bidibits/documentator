@@ -375,7 +375,31 @@ function renderDocuments(){
 }
 
 function openDocument(doc){ openDetail(doc.id); }
-function onEnter(action){ return event => { if(event.key === "Enter" || event.key === " "){ event.preventDefault(); action(); } }; }
+function onEnter(action){ return event => { if(event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")){ event.preventDefault(); action(); } }; }
+
+// A small pop-up list of choices under a button: [[label, action, danger?], ...]. Closes on a click elsewhere, Escape or scrolling.
+function openMenu(anchor, items){
+  closeMenu();
+  const menu = h("div", {class: "menu", role: "menu", id: "pop-menu"}, items.map(([label, action, danger]) =>
+    h("button", {class: "menu-item" + (danger ? " danger" : ""), type: "button", role: "menuitem", onclick: event => { event.stopPropagation(); closeMenu(); action(); }}, label)));
+  document.body.append(menu);
+  const box = anchor.getBoundingClientRect();
+  menu.style.setProperty("top", Math.min(box.bottom + 4, window.innerHeight - menu.offsetHeight - 8) + "px");
+  menu.style.setProperty("left", Math.max(8, Math.min(box.right - menu.offsetWidth, window.innerWidth - menu.offsetWidth - 8)) + "px");
+  menu.querySelector("button").focus();
+  const away = event => { if(!menu.contains(event.target)) closeMenu(); };
+  const key = event => { if(event.key === "Escape"){ event.stopPropagation(); closeMenu(); anchor.focus(); } };
+  menu._off = () => { document.removeEventListener("mousedown", away, true); document.removeEventListener("keydown", key, true); window.removeEventListener("scroll", closeMenu, true); };
+  document.addEventListener("mousedown", away, true);
+  document.addEventListener("keydown", key, true);
+  window.addEventListener("scroll", closeMenu, true);
+}
+function closeMenu(){
+  const menu = document.getElementById("pop-menu");
+  if(!menu) return;
+  if(menu._off) menu._off();
+  menu.remove();
+}
 
 function listView(folders, browsing){
   const th = (label, cls) => h("th", {scope: "col", class: cls}, label);
@@ -424,7 +448,8 @@ function gridView(folders, browsing){
       h("div", {class: "g-ic"}, folderIcon(f)),
       h("div", {class: "g-title"}, f.name),
       h("div", {class: "g-sub"}, folderCounts(f)),
-      canKeepFolders() ? h("div", {class: "g-acts"}, folderActions(f)) : null);
+      canKeepFolders() ? h("button", {class: "g-more", type: "button", "aria-label": "Options for " + f.name, title: "Edit or remove", "aria-haspopup": "menu",
+        onclick: event => { event.stopPropagation(); openMenu(event.currentTarget, [["Edit", () => openEditFolder(f)], ["Remove", () => confirmDeleteFolder(f), true]]); }}, icon("more")) : null);
     makeDropTarget(card, f.id);
     if(canKeepFolders()) makeDraggable(card, "folder", f.id);
     cards.push(card);
