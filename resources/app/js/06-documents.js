@@ -183,10 +183,13 @@ const FOLDER_COLORS = [
 ];
 const FOLDER_DEFAULT_COLOR = "#0091FF";
 
+// the looks a folder can have, in the order the pickers show them
+const FOLDER_ICONS = [["folder", "Folder"], ["cabinet", "Two-door cabinet"], ["pedestal", "Filing pedestal"], ["drawers", "Drawers"], ["binder", "Ring binder"]];
+
 // a folder icon in its color (set through the style object, which the page's strict rules allow); pale colors get an edge
 // so a white folder can still be seen on a white page
 function folderIcon(f){
-  const svg = icon("folder");
+  const svg = icon(f && FOLDER_ICONS.some(([name]) => name === f.icon) ? f.icon : "folder");
   if(f && f.color){
     svg.style.setProperty("color", f.color);
     svg.style.setProperty("fill", "color-mix(in srgb, " + f.color + " 30%, transparent)");
@@ -196,8 +199,28 @@ function folderIcon(f){
   return svg;
 }
 
+// The "Looks like" box of the folder windows: the four icons as buttons. get() returns folder, cabinet, pedestal or drawers.
+function iconPicker(value, getColor){
+  let current = FOLDER_ICONS.some(([name]) => name === value) ? value : "folder";
+  const row = h("div", {class: "icon-choices", role: "radiogroup", "aria-label": "Folder icon"});
+  const buttons = [];
+  const paint = () => {
+    for(const [name, b] of buttons){
+      b.setAttribute("aria-checked", String(current === name));
+      b.replaceChildren(folderIcon({icon: name, color: getColor()}));
+    }
+  };
+  for(const [name, label] of FOLDER_ICONS){
+    const b = h("button", {type: "button", class: "icon-choice", role: "radio", title: label, "aria-label": label, onclick: () => { current = name; paint(); }});
+    buttons.push([name, b]);
+    row.append(b);
+  }
+  paint();
+  return {el: row, get: () => current, refresh: paint};
+}
+
 // The color box of the folder windows: a row of round swatches plus "Pick any color". get() returns the chosen #RRGGBB.
-function colorPicker(value){
+function colorPicker(value, onChange){
   let current = value ? value.toUpperCase() : null;
   const row = h("div", {class: "swatches", role: "radiogroup", "aria-label": "Folder color"});
   const custom = h("input", {type: "color", class: "swatch-custom", "aria-label": "Pick any color", value: current || FOLDER_DEFAULT_COLOR});
@@ -206,6 +229,7 @@ function colorPicker(value){
     for(const [hex, b] of buttons) b.setAttribute("aria-checked", String(current === hex));
     const own = current && !FOLDER_COLORS.some(([, hex]) => hex === current);
     custom.parentElement && custom.parentElement.classList.toggle("on", !!own);
+    if(onChange) onChange();
   };
   for(const [name, hex] of FOLDER_COLORS){
     const b = h("button", {type: "button", class: "swatch", role: "radio", title: name, "aria-label": name, onclick: () => { current = hex; custom.value = hex; paint(); }});
@@ -240,15 +264,18 @@ function openNewFolder(){
   const {box, fail, clear} = formError();
   const name = h("input", {id: "fld-fname", name: "name", type: "text", maxlength: "100", autocomplete: "off"});
   const where = docs.folder === null ? "at the top level" : "inside " + (folderOf(docs.folder) || {name: "this folder"}).name;
-  const color = colorPicker(FOLDER_DEFAULT_COLOR);
+  let looks = null;
+  const color = colorPicker(FOLDER_DEFAULT_COLOR, () => looks && looks.refresh());
+  looks = iconPicker("folder", () => color.get());
   const body = h("form", {novalidate: true, onsubmit: e => e.preventDefault()}, box,
     formField("fname", "Folder name", name, "It will be made " + where + ". Drag documents and folders into it afterwards.", true),
+    h("div", {class: "f"}, h("label", {}, "Looks like"), looks.el),
     h("div", {class: "f"}, h("label", {}, "Color"), color.el));
   openModal("New folder", body, async () => {
     clear();
     if(!name.value.trim()) return fail("Enter a name.", name);
     try{
-      await api("POST", "/api/folders", {name: name.value, parent_id: docs.folder, color: color.get()});
+      await api("POST", "/api/folders", {name: name.value, parent_id: docs.folder, color: color.get(), icon: looks.get()});
       closeModal();
       toast("Made the folder " + name.value.trim().replace(/\s+/g, " "));
       await loadDocuments();
@@ -259,15 +286,18 @@ function openNewFolder(){
 function openEditFolder(f){
   const {box, fail, clear} = formError();
   const name = h("input", {id: "fld-fname", name: "name", type: "text", maxlength: "100", value: f.name, autocomplete: "off"});
-  const color = colorPicker(f.color);
+  let looks = null;
+  const color = colorPicker(f.color, () => looks && looks.refresh());
+  looks = iconPicker(f.icon, () => color.get());
   const body = h("form", {novalidate: true, onsubmit: e => e.preventDefault()}, box,
     formField("fname", "Folder name", name, "", true),
+    h("div", {class: "f"}, h("label", {}, "Looks like"), looks.el),
     h("div", {class: "f"}, h("label", {}, "Color"), color.el));
   openModal("Edit " + f.name, body, async () => {
     clear();
     if(!name.value.trim()) return fail("Enter a name.", name);
     try{
-      await api("PATCH", "/api/folders/" + f.id, {name: name.value, color: color.get()});
+      await api("PATCH", "/api/folders/" + f.id, {name: name.value, color: color.get(), icon: looks.get()});
       closeModal();
       toast("Saved the folder");
       await loadDocuments();

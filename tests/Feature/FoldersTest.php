@@ -316,4 +316,34 @@ class FoldersTest extends TestCase
         $this->api('PATCH', "/api/folders/{$a}", ['color' => 'blue'])->assertStatus(422);
         $this->assertNull(Folder::find($a)->color);
     }
+
+    // ---- icons ----
+
+    public function test_a_folder_looks_like_a_folder_a_cabinet_a_pedestal_or_drawers(): void
+    {
+        $plain = $this->folder('Plain');
+        $cabinet = $this->api('POST', '/api/folders', ['name' => 'Cabinet', 'icon' => 'cabinet'])->assertCreated()->assertJsonPath('folder.icon', 'cabinet')->json('folder.id');
+
+        $list = collect($this->api('GET', '/api/folders')->json('folders'))->keyBy('id');
+        $this->assertSame('folder', $list[$plain]['icon']);   // the default
+        $this->assertSame('cabinet', $list[$cabinet]['icon']);
+
+        foreach (['pedestal', 'drawers', 'binder', 'folder'] as $icon) {
+            $this->api('PATCH', "/api/folders/{$cabinet}", ['icon' => $icon])->assertOk()->assertJsonPath('folder.icon', $icon)->assertJsonPath('folder.name', 'Cabinet');
+        }
+        $this->api('PATCH', "/api/folders/{$cabinet}", ['name' => 'Renamed'])->assertOk()->assertJsonPath('folder.icon', 'folder');   // a rename keeps it
+
+        $entry = collect($this->api('GET', "/api/audits?table=folders&record={$cabinet}")->json('entries'))->where('column', 'icon')->first();
+        $this->assertSame('Icon', $entry['columnLabel']);
+        $this->assertSame(['binder', 'folder'], [$entry['before'], $entry['after']]);
+    }
+
+    public function test_only_the_known_icons_are_accepted(): void
+    {
+        $this->api('POST', '/api/folders', ['name' => 'X', 'icon' => 'skull'])->assertStatus(422);
+        $a = $this->folder('A');
+        $this->api('PATCH', "/api/folders/{$a}", ['icon' => '<svg>'])->assertStatus(422);
+        $this->api('PATCH', "/api/folders/{$a}", ['icon' => null])->assertStatus(422);
+        $this->assertSame('folder', Folder::find($a)->icon);
+    }
 }

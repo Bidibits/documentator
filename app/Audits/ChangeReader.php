@@ -37,6 +37,7 @@ final class ChangeReader
         'folder_id' => 'Folder',
         'parent_id' => 'Inside folder',
         'color' => 'Color',
+        'icon' => 'Icon',
         'location_note' => 'Physical location',
         'current_version_id' => 'Current version',
         'created_by' => 'Created by',

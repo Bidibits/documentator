@@ -196,3 +196,13 @@
 .swatch-own{display:inline-flex; align-items:center; gap:8px; margin-left:6px; padding:3px 10px 3px 4px; border:1px solid var(--line-2); border-radius:999px; font-size:12.5px; color:var(--ink-2); cursor:pointer}
 .swatch-own.on{outline:2px solid var(--accent); outline-offset:2px}
 .swatch-custom{width:26px; height:26px; border:0; padding:0; border-radius:50%; background:none; cursor:pointer}
+.icon-choices{display:flex; flex-wrap:wrap; gap:8px}
+.icon-choice{display:grid; place-items:center; width:48px; height:48px; border:1px solid var(--line-2); border-radius:var(--r); background:var(--surface); cursor:pointer; color:var(--ink-3)}
+.icon-choice .ic{width:30px; height:30px; color:var(--accent)}
+.icon-choice:hover{border-color:var(--ink-4)}
+.icon-choice[aria-checked="true"]{outline:2px solid var(--accent); outline-offset:2px; background:var(--accent-soft)}
+.icon-choice:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.swatch-own{white-space:nowrap}
+.swatch-custom::-webkit-color-swatch-wrapper{padding:0}
+.swatch-custom::-webkit-color-swatch{border:1px solid var(--line-2); border-radius:50%}
+.swatch-custom::-moz-color-swatch{border:1px solid var(--line-2); border-radius:50%}

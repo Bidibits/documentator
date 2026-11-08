@@ -318,3 +318,9 @@ Settled calls, with the reason. Check here before changing the schema or the rul
   their own. A new folder starts blue; one with no color shows the app's own blue. The folder's **Rename** button is now **Edit**
   (name and color together). A color change is a column change in Audits ("Color"). Pale and very dark colors get a thin edge so a
   white or black folder can still be seen.
+
+## Folder icons (9 Nov 2026, the user's call)
+
+- A folder can look like a **folder** (the default), a **two-door cabinet**, a **filing pedestal**, a set of **drawers** or a
+  **ring binder** (`folders.icon`; only those five are accepted). Chosen in "Looks like" in the New folder and Edit windows, shown in
+  the folder's color in both list and grid. An icon change is a column change in Audits ("Icon").
