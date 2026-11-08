@@ -65,3 +65,5 @@
 
 .modal p.hint{margin:0 0 16px; font-size:12.5px; color:var(--ink-3); line-height:1.45}
 .sec > .btn{margin-top:2px}
+.tl-files{margin-top:8px}
+.tl-files .files{margin:0}

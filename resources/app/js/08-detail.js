@@ -28,7 +28,7 @@ async function openDetail(id){
     section("Details", details.children.length ? details : h("p", {class: "empty-mini"}, "No details were entered.")),
     section("Files in the current version (Ver " + doc.rev + ")", fileList(current.files),
       h("button", {class: "btn sm", type: "button", onclick: () => openNewVersion(doc)}, icon("upload"), "Upload new version")),
-    section("Versions", timeline(doc.versions)));
+    section("Versions", timeline(doc.versions, current.id)));
 
   openDrawer();
   $("#d-body").scrollTop = 0;
@@ -53,10 +53,12 @@ async function downloadClicked(button, file){
   finally{ button.disabled = false; }
 }
 
-function timeline(versions){
+// every version, newest first; an older version lists its files here with View and Download (the current one is above)
+function timeline(versions, currentId){
   return h("div", {class: "tl"}, versions.map(v => h("div", {class: "tl-item"},
     h("span", {class: "tl-dot"}),
     h("div", {class: "tl-top"}, h("strong", {}, "Ver " + v.rev), h("span", {class: "tl-when"}, fmtStamp(v.createdAt))),
     h("div", {class: "tl-sub"}, (v.rev === 0 ? "Registered by " : "Uploaded by ") + (v.createdBy || "unknown") + ", " + plural(v.files.length, "file")),
-    v.changeNote ? h("div", {class: "tl-note"}, v.changeNote) : null)));
+    v.changeNote ? h("div", {class: "tl-note"}, v.changeNote) : null,
+    v.id === currentId ? h("div", {class: "tl-sub"}, "Current version, files above") : h("div", {class: "tl-files"}, fileList(v.files)))));
 }
