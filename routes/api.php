@@ -30,6 +30,7 @@ Route::middleware('documentator.signed-in')->group(function () {
     Route::post('password', [PasswordController::class, 'change']);
 
     Route::middleware('documentator.can:documentator.document.view')->group(function () {
+        Route::get('reminders', [DocumentController::class, 'reminders']);
         Route::get('documents', [DocumentController::class, 'index']);
         Route::get('documents/{document}', [DocumentController::class, 'show'])->whereNumber('document');
     });

@@ -31,6 +31,7 @@ async function openUpload(){
     h("option", {value: ""}, docs.canRegisterNone ? "No department" : "Choose a department"), docs.departments.map(d => h("option", {value: String(d.id)}, d.name)));
   const issued = h("input", {id: "fld-issued_on", name: "issued_on", type: "date", value: todayISO()});
   const expires = h("input", {id: "fld-expires_on", name: "expires_on", type: "date"});
+  const remind = h("input", {id: "fld-remind_days", name: "remind_days", type: "number", min: "1", max: "365", inputmode: "numeric", placeholder: "30"});
   const location = h("input", {id: "fld-location_note", name: "location_note", type: "text", maxlength: "200", autocomplete: "off"});
   const description = h("textarea", {id: "fld-description", name: "description", maxlength: "2000"});
   const files = h("input", {id: "fld-files", name: "files", type: "file", multiple: true});
@@ -66,6 +67,7 @@ async function openUpload(){
     h("div", {class: "grid2"},
       formField("issued_on", "Issued on", issued),
       formField("expires_on", "Expires on", expires, "Leave empty if it does not expire.")),
+    formField("remind_days", "Tell me this many days before it expires", remind, "It shows in the bell and the Expiring list from then on. Empty means 30 days."),
     formField("location_note", "Physical location", location, "Where the paper copy is kept, for example Cabinet 3, shelf B. Just a note."),
     formField("description", "Description", description));
 
@@ -81,7 +83,7 @@ async function openUpload(){
     const form = new FormData();
     form.append("code", codeText);
     form.append("title", title.value.trim());
-    for(const [key, input] of [["doc_type", type], ["department_id", department], ["folder_id", folder], ["issued_on", issued], ["expires_on", expires],
+    for(const [key, input] of [["doc_type", type], ["department_id", department], ["folder_id", folder], ["issued_on", issued], ["expires_on", expires], ["remind_days", remind],
                                ["location_note", location], ["description", description]]){
       if(input.value.trim() !== "") form.append(key, input.value.trim());
     }
@@ -213,6 +215,7 @@ function openEditDetails(doc){
   const folder = folderSelect("fld-efolder", doc.folderId);
   const issued = h("input", {id: "fld-eissued", name: "issued_on", type: "date", value: doc.issuedOn});
   const expires = h("input", {id: "fld-eexpires", name: "expires_on", type: "date", value: doc.expiresOn});
+  const remind = h("input", {id: "fld-eremind", name: "remind_days", type: "number", min: "1", max: "365", inputmode: "numeric", placeholder: "30", value: doc.remindDays == null ? "" : String(doc.remindDays)});
   const location = h("input", {id: "fld-elocation", name: "location_note", type: "text", maxlength: "200", value: doc.location, autocomplete: "off"});
   const description = h("textarea", {id: "fld-edescription", name: "description", maxlength: "2000"});
   description.value = doc.description || "";
@@ -227,6 +230,7 @@ function openEditDetails(doc){
     h("div", {class: "grid2"},
       formField("eissued", "Issued on", issued),
       formField("eexpires", "Expires on", expires, "Fixes the date of the current version. Leave empty if it does not expire. For a renewal use Renew instead, so the old dates are kept.")),
+    formField("eremind", "Tell me this many days before it expires", remind, "It shows in the bell and the Expiring list from then on. Empty means 30 days."),
     formField("elocation", "Physical location", location),
     formField("edescription", "Description", description));
 
@@ -237,7 +241,7 @@ function openEditDetails(doc){
     try{
       await api("PATCH", "/api/documents/" + doc.id, {
         title: title.value, doc_type: type.value, department_id: department.value, folder_id: folder.value, issued_on: issued.value,
-        expires_on: expires.value, location_note: location.value, description: description.value,
+        expires_on: expires.value, remind_days: remind.value, location_note: location.value, description: description.value,
       });
       closeModal();
       toast("Saved the details of " + doc.code);
@@ -251,6 +255,7 @@ function openEditDetails(doc){
         if(field === "expires_on") return fail("The expiry date cannot be before the issue date.", expires);
         if(field === "department_id") return fail("That department is not available. Choose another.", department);
         if(field === "title") return fail("Enter a title of up to 200 characters.", title);
+        if(field === "remind_days") return fail("Enter a number of days from 1 to 365, or leave it empty for 30.", remind);
         return fail("Check the form: one of the fields is too long or not valid.");
       }
       fail(errorWords(e));

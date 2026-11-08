@@ -6,6 +6,7 @@ let expToken = 0;
 
 function clearExpiring(){
   exp.rows = []; exp.page = 1; exp.pages = 1; exp.total = 0; exp.loaded = false; expToken++;
+  closeBell(); bell.items = [];
   $("#exp-table").replaceChildren();
   $("#exp-pager").replaceChildren();
   $("#exp-count").textContent = "";
@@ -13,6 +14,7 @@ function clearExpiring(){
 }
 
 function setExpiringBadge(n){
+  updateBellBadge(n);
   const badge = $("#exp-badge");
   badge.hidden = n === 0;
   badge.textContent = n > 99 ? "99+" : String(n);

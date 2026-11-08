@@ -68,6 +68,7 @@
 }
 .topbar-in{display:flex; align-items:center; gap:10px; max-width:1200px; margin:0 auto; padding:0 32px; min-height:40px}
 .tb-title{font-weight:600; font-size:14px; color:var(--ink-2)}
+.tb-actions{margin-left:auto; display:flex; align-items:center; gap:6px}
 
 @media (min-width:1024px){ .only-narrow{display:none !important} }
 @media (max-width:1023px){

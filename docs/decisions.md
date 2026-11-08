@@ -349,3 +349,24 @@ Settled calls, with the reason. Check here before changing the schema or the rul
 - Two people making the same username at the same moment now get 409 `username_taken` instead of a server error.
 - **For a real server later (not changed, the dev setup needs them as they are):** `APP_DEBUG=false`, `APP_ENV=production`, HTTPS
   with `SESSION_SECURE_COOKIE=true`.
+
+## Bell, "tell me N days before", sample documents (9 Nov 2026, the user's call; replaces the e-mail/Teams reminders for now)
+
+- **A bell in the top bar** (anyone who may view documents): a red count of the documents that are expired or inside their warning
+  window, and a list when it is opened: the ten closest first (longest overdue, then soonest), each with its date and a mark
+  ("Expired 45 days ago", "In 3 days"), a click opens the document, and "Open the Expiring list" goes to the full, paged list. The
+  list is asked for when the bell opens; the count refreshes with every documents request and every five minutes. Only
+  documents the person may view (`GET /api/reminders`).
+- **Each document says when it starts to warn**: "Tell me N days before it expires" (1 to 365; empty = 30, `expiry_warning_days`),
+  set when registering and in Edit details, logged in Audits ("Remind (days before)"). It is the one definition of "expiring
+  soon" everywhere: the status marks, the Expiring list, the filters, the side bar count and the bell (the database filters
+  compute it per document, so they cannot disagree with the screen).
+- The **Expiring panel stays** as the dashboard: soonest first, paged, with Renew.
+- **Still not built:** pushing reminders out (e-mail, Teams); the bell only shows when someone opens the app. That is still
+  waiting on IT (see "To do later").
+- **Sample documents on any site:** `php artisan documentator:demo` (or `scripts\load-demo.cmd`) makes six folders (colors, looks,
+  a sub-folder) and fifteen documents (codes `DEMO-01` to `DEMO-15`) with real files (PDF, Word, Excel, CSV, text, PNG, a drawing
+  kept as plain bytes) and deadlines relative to today: expired 45 days and a day ago, today, in 3, 10, 12, 25, 28 and 45 days (one
+  with its own 60-day warning, one with the default so it stays quiet), in 120 and 400 days, none, one renewed (two versions with
+  different dates) and one with a second version. It uses the first administrator account, skips codes already there, and
+  `--remove` takes away exactly the `DEMO-` documents and the sample folders left empty. Nothing else is touched.

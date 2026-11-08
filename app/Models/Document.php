@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 
 #[Fillable([
-    'code', 'title', 'doc_type', 'department_id', 'folder_id', 'description', 'issued_on', 'expires_on', 'location_note',
+    'code', 'title', 'doc_type', 'department_id', 'folder_id', 'remind_days', 'description', 'issued_on', 'expires_on', 'location_note',
     'current_version_id', 'created_by', 'updated_by',
 ])]
 class Document extends Model
@@ -81,13 +81,20 @@ class Document extends Model
      */
     public function expiry(): array
     {
+        $lead = $this->leadDays();
         if ($this->expires_on === null) {
             return ['status' => 'none', 'days' => null];
         }
         $today = Carbon::today(config('documentator.timezone'))->startOfDay();
         $days = (int) $today->diffInDays(Carbon::parse($this->expires_on->format('Y-m-d'), config('documentator.timezone'))->startOfDay(), false);
 
-        return ['status' => $days < 0 ? 'expired' : ($days <= (int) config('documentator.expiry_warning_days') ? 'expiring' : 'active'), 'days' => $days];
+        return ['status' => $days < 0 ? 'expired' : ($days <= $lead ? 'expiring' : 'active'), 'days' => $days];
+    }
+
+    /** How many days before the expiry date this document starts to be flagged: its own setting, else the default. */
+    public function leadDays(): int
+    {
+        return $this->remind_days !== null ? (int) $this->remind_days : (int) config('documentator.expiry_warning_days');
     }
 
     /** A column added by withAccessDates (stored as UTC text), as the browser reads timestamps; empty when never. */
@@ -119,6 +126,8 @@ class Document extends Model
             'folder' => $this->folder_id === null ? '' : (string) (($folderPaths ?? Folder::paths())[$this->folder_id] ?? ''),
             'issuedOn' => $this->issued_on?->format('Y-m-d') ?? '',
             'expiresOn' => $this->expires_on?->format('Y-m-d') ?? '',
+            'remindDays' => $this->remind_days,
+            'leadDays' => $this->leadDays(),
             'expiryStatus' => $expiry['status'],
             'daysLeft' => $expiry['days'],
             'location' => (string) $this->location_note,

@@ -33,7 +33,7 @@ use Throwable;
 class DocumentController extends Controller
 {
     /** The columns of a new document that go into the change log (its dates are added as typed). */
-    private const LOGGED_DOCUMENT_COLUMNS = ['code', 'title', 'doc_type', 'department_id', 'folder_id', 'description', 'location_note', 'current_version_id', 'created_by', 'updated_by'];
+    private const LOGGED_DOCUMENT_COLUMNS = ['code', 'title', 'doc_type', 'department_id', 'folder_id', 'remind_days', 'description', 'location_note', 'current_version_id', 'created_by', 'updated_by'];
 
     /** Documents on a page of the register unless the person asks for more. */
     private const PER_PAGE = 25;
@@ -115,17 +115,39 @@ class DocumentController extends Controller
         if ($status === '') {
             return;
         }
-        $today = Carbon::today(config('documentator.timezone'));
-        $soon = $today->copy()->addDays((int) config('documentator.expiry_warning_days'))->format('Y-m-d');
-        $day = $today->format('Y-m-d');
+        $day = Carbon::today(config('documentator.timezone'))->format('Y-m-d');
+        // each document flags itself its own number of days ahead (remind_days), else the default
+        $soon = "date(?, '+' || coalesce(documents.remind_days, ?) || ' days')";
+        $with = [$day, (int) config('documentator.expiry_warning_days')];
 
         match ($status) {
             'none' => $query->whereNull('documents.expires_on'),
             'expired' => $query->whereDate('documents.expires_on', '<', $day),
-            'expiring' => $query->whereDate('documents.expires_on', '>=', $day)->whereDate('documents.expires_on', '<=', $soon),
-            'active' => $query->whereDate('documents.expires_on', '>', $soon),
-            'attention' => $query->whereDate('documents.expires_on', '<=', $soon),   // expired or expiring (a null date never matches)
+            'expiring' => $query->whereDate('documents.expires_on', '>=', $day)->whereRaw("date(documents.expires_on) <= {$soon}", $with),
+            'active' => $query->whereRaw("date(documents.expires_on) > {$soon}", $with),
+            'attention' => $query->whereRaw("date(documents.expires_on) <= {$soon}", $with),   // expired or expiring (a null date never matches)
         };
+    }
+
+    /**
+     * What the bell shows: how many documents are expired or inside their "tell me N days before" window, and the ten
+     * closest to (or furthest past) their date. Only documents the person may view.
+     */
+    public function reminders(Request $request): JsonResponse
+    {
+        $grants = Access::grants(SessionUser::resolve($request));
+        $query = Document::query();
+        $grants->scope($query, 'documents.department_id', Access::TAGS['view']);
+        $this->expiryFilter($query, 'attention');
+
+        $count = (clone $query)->count();
+        $items = $query->with(['currentVersion.files', 'creator', 'department'])->orderBy('documents.expires_on')->orderBy('documents.code')->limit(10)->get();
+        $paths = Folder::paths();
+
+        return response()->json([
+            'count' => $count,
+            'items' => $items->map(fn (Document $d) => $d->view(false, $grants, $paths))->all(),
+        ]);
     }
 
     public function suggestCode(): JsonResponse
@@ -156,6 +178,7 @@ class DocumentController extends Controller
             'doc_type' => ['nullable', 'string', 'max:64'],
             'department_id' => ['nullable', 'integer', Rule::exists('departments', 'id')->where('active', true)],
             'folder_id' => ['nullable', 'integer', 'exists:folders,id'],
+            'remind_days' => ['nullable', 'integer', 'min:1', 'max:365'],
             'description' => ['nullable', 'string', 'max:2000'],
             'issued_on' => ['nullable', 'date_format:Y-m-d'],
             'expires_on' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:issued_on'],
@@ -177,6 +200,7 @@ class DocumentController extends Controller
                     'doc_type' => $data['doc_type'] ?? null,
                     'department_id' => $data['department_id'] ?? null,
                     'folder_id' => $data['folder_id'] ?? null,
+                    'remind_days' => isset($data['remind_days']) ? (int) $data['remind_days'] : null,
                     'description' => $data['description'] ?? null,
                     'issued_on' => $data['issued_on'] ?? null,
                     'expires_on' => $data['expires_on'] ?? null,
@@ -240,6 +264,7 @@ class DocumentController extends Controller
             'doc_type' => ['sometimes', 'nullable', 'string', 'max:64'],
             'department_id' => ['sometimes', 'nullable', 'integer', Rule::exists('departments', 'id')],
             'folder_id' => ['sometimes', 'nullable', 'integer', 'exists:folders,id'],
+            'remind_days' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:365'],
             'description' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'issued_on' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
             'expires_on' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
@@ -248,7 +273,7 @@ class DocumentController extends Controller
         if (isset($data['title']) && trim($data['title']) === '') {
             throw new ApiError(422, 'invalid', ['field' => 'title']);
         }
-        foreach (['department_id', 'folder_id'] as $key) {
+        foreach (['department_id', 'folder_id', 'remind_days'] as $key) {
             if (isset($data[$key])) {
                 $data[$key] = (int) $data[$key];   // a form sends it as text
             }
@@ -306,6 +331,7 @@ class DocumentController extends Controller
             'doc_type' => $document->doc_type,
             'department_id' => $document->department_id,
             'folder_id' => $document->folder_id,
+            'remind_days' => $document->remind_days,
             'description' => $document->description,
             'issued_on' => $document->issued_on?->format('Y-m-d'),
             'expires_on' => $document->expires_on?->format('Y-m-d'),

@@ -29,4 +29,5 @@ function applyPermissions(){
   for(const group of document.querySelectorAll("#tabs .sb-group")) group.hidden = ![...group.querySelectorAll(".nav-item")].some(i => !i.hidden);
   $("#doc-new").hidden = !can("documentator.document.create");
   $("#doc-newfolder").hidden = !can("documentator.document.create");
+  $("#bell").hidden = !can("documentator.document.view");
 }

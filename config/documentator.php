@@ -24,7 +24,8 @@ return [
     // the office's time zone: the date in a suggested code is today's date here
     'timezone' => env('DOCUMENTATOR_TIMEZONE', 'Asia/Manila'),
 
-    // a document is "expiring soon" this many days before its expiry date (the dates are the office's calendar days)
+    // a document is "expiring soon" this many days before its expiry date unless it sets its own "tell me N days before"
+    // (the dates are the office's calendar days)
     'expiry_warning_days' => (int) env('DOCUMENTATOR_EXPIRY_WARNING_DAYS', 30),
 
     // Converting Word, PowerPoint and similar files to PDF for the viewer needs LibreOffice on the server: the path to its

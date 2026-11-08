@@ -21,6 +21,7 @@ async function openDetail(id){
     ["Folder", doc.folder],
     ["Issued on", fmtDate(doc.issuedOn)],
     ["Expires on", doc.expiresOn ? expiryContent(doc) : ""],
+    ["Reminder", doc.expiresOn ? "Tell me " + plural(doc.leadDays, "day") + " before" + (doc.remindDays == null ? " (the default)" : "") : ""],
     ["Physical location", doc.location],
     ["Description", doc.description, "pre"],
     ["Added by", doc.createdBy ? doc.createdBy + ", " + fmtStamp(doc.createdAt) : ""],
