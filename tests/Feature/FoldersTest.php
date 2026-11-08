@@ -286,4 +286,34 @@ class FoldersTest extends TestCase
         $entries = collect($this->api('GET', "/api/audits?table=folders&record={$a}")->json('entries'));
         $this->assertSame('Old stuff', $entries->firstWhere('change', 'Deleted')['record']);
     }
+
+    // ---- colors ----
+
+    public function test_a_folder_has_a_color_that_can_be_chosen_changed_and_is_logged(): void
+    {
+        $plain = $this->folder('Plain');
+        $red = $this->api('POST', '/api/folders', ['name' => 'Red', 'color' => '#e5484d'])->assertCreated()->assertJsonPath('folder.color', '#E5484D')->json('folder.id');
+
+        $list = collect($this->api('GET', '/api/folders')->json('folders'))->keyBy('id');
+        $this->assertNull($list[$plain]['color']);
+        $this->assertSame('#E5484D', $list[$red]['color']);
+
+        $this->api('PATCH', "/api/folders/{$red}", ['color' => '#0091FF'])->assertOk()->assertJsonPath('folder.color', '#0091FF')->assertJsonPath('folder.name', 'Red');
+        $this->api('PATCH', "/api/folders/{$red}", ['name' => 'Blue now'])->assertOk()->assertJsonPath('folder.color', '#0091FF');   // a rename keeps the color
+        $this->api('PATCH', "/api/folders/{$red}", ['color' => null])->assertOk()->assertJsonPath('folder.color', null);
+
+        $entry = collect($this->api('GET', "/api/audits?table=folders&record={$red}")->json('entries'))->where('column', 'color')->first();
+        $this->assertSame('Color', $entry['columnLabel']);
+        $this->assertSame(['#0091FF', null], [$entry['before'], $entry['after']]);
+    }
+
+    public function test_only_a_six_digit_hex_color_is_accepted(): void
+    {
+        foreach (['red', '#fff', '#12345G', '123456', '#1234567', 'url(x)'] as $bad) {
+            $this->api('POST', '/api/folders', ['name' => 'X', 'color' => $bad])->assertStatus(422);
+        }
+        $a = $this->folder('A');
+        $this->api('PATCH', "/api/folders/{$a}", ['color' => 'blue'])->assertStatus(422);
+        $this->assertNull(Folder::find($a)->color);
+    }
 }

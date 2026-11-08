@@ -176,7 +176,51 @@ async function moveItem(item, target){
   }
 }
 
-/* ----- folders: open, make, rename, remove ----- */
+/* ----- folder colors: the rainbow, black, white and gray, or any color the person picks ----- */
+const FOLDER_COLORS = [
+  ["Red", "#E5484D"], ["Orange", "#F76B15"], ["Yellow", "#FFC53D"], ["Green", "#30A46C"], ["Blue", "#0091FF"],
+  ["Indigo", "#5B5BD6"], ["Violet", "#8E4EC6"], ["Black", "#1C1C1C"], ["White", "#FFFFFF"], ["Gray", "#8B8D98"],
+];
+const FOLDER_DEFAULT_COLOR = "#0091FF";
+
+// a folder icon in its color (set through the style object, which the page's strict rules allow); pale colors get an edge
+// so a white folder can still be seen on a white page
+function folderIcon(f){
+  const svg = icon("folder");
+  if(f && f.color){
+    svg.style.setProperty("color", f.color);
+    svg.style.setProperty("fill", "color-mix(in srgb, " + f.color + " 30%, transparent)");
+    const n = parseInt(f.color.slice(1), 16), luma = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+    if(luma > 0.8 || luma < 0.15) svg.classList.add("edged");
+  }
+  return svg;
+}
+
+// The color box of the folder windows: a row of round swatches plus "Pick any color". get() returns the chosen #RRGGBB.
+function colorPicker(value){
+  let current = value ? value.toUpperCase() : null;
+  const row = h("div", {class: "swatches", role: "radiogroup", "aria-label": "Folder color"});
+  const custom = h("input", {type: "color", class: "swatch-custom", "aria-label": "Pick any color", value: current || FOLDER_DEFAULT_COLOR});
+  const buttons = [];
+  const paint = () => {
+    for(const [hex, b] of buttons) b.setAttribute("aria-checked", String(current === hex));
+    const own = current && !FOLDER_COLORS.some(([, hex]) => hex === current);
+    custom.parentElement && custom.parentElement.classList.toggle("on", !!own);
+  };
+  for(const [name, hex] of FOLDER_COLORS){
+    const b = h("button", {type: "button", class: "swatch", role: "radio", title: name, "aria-label": name, onclick: () => { current = hex; custom.value = hex; paint(); }});
+    b.style.setProperty("background", hex);
+    buttons.push([hex, b]);
+    row.append(b);
+  }
+  const own = h("label", {class: "swatch-own", title: "Pick any color"}, custom, h("span", {}, "Pick any color"));
+  custom.addEventListener("input", () => { current = custom.value.toUpperCase(); paint(); });
+  row.append(own);
+  paint();
+  return {el: row, get: () => current};
+}
+
+/* ----- folders: open, make, edit, remove ----- */
 function openFolder(id){
   docs.folder = id;
   docs.query = ""; docs.status = "";
@@ -196,13 +240,15 @@ function openNewFolder(){
   const {box, fail, clear} = formError();
   const name = h("input", {id: "fld-fname", name: "name", type: "text", maxlength: "100", autocomplete: "off"});
   const where = docs.folder === null ? "at the top level" : "inside " + (folderOf(docs.folder) || {name: "this folder"}).name;
+  const color = colorPicker(FOLDER_DEFAULT_COLOR);
   const body = h("form", {novalidate: true, onsubmit: e => e.preventDefault()}, box,
-    formField("fname", "Folder name", name, "It will be made " + where + ". Drag documents and folders into it afterwards.", true));
+    formField("fname", "Folder name", name, "It will be made " + where + ". Drag documents and folders into it afterwards.", true),
+    h("div", {class: "f"}, h("label", {}, "Color"), color.el));
   openModal("New folder", body, async () => {
     clear();
     if(!name.value.trim()) return fail("Enter a name.", name);
     try{
-      await api("POST", "/api/folders", {name: name.value, parent_id: docs.folder});
+      await api("POST", "/api/folders", {name: name.value, parent_id: docs.folder, color: color.get()});
       closeModal();
       toast("Made the folder " + name.value.trim().replace(/\s+/g, " "));
       await loadDocuments();
@@ -210,20 +256,23 @@ function openNewFolder(){
   }, "Make folder");
 }
 
-function openRenameFolder(f){
+function openEditFolder(f){
   const {box, fail, clear} = formError();
   const name = h("input", {id: "fld-fname", name: "name", type: "text", maxlength: "100", value: f.name, autocomplete: "off"});
-  const body = h("form", {novalidate: true, onsubmit: e => e.preventDefault()}, box, formField("fname", "Folder name", name, "", true));
-  openModal("Rename " + f.name, body, async () => {
+  const color = colorPicker(f.color);
+  const body = h("form", {novalidate: true, onsubmit: e => e.preventDefault()}, box,
+    formField("fname", "Folder name", name, "", true),
+    h("div", {class: "f"}, h("label", {}, "Color"), color.el));
+  openModal("Edit " + f.name, body, async () => {
     clear();
     if(!name.value.trim()) return fail("Enter a name.", name);
     try{
-      await api("PATCH", "/api/folders/" + f.id, {name: name.value});
+      await api("PATCH", "/api/folders/" + f.id, {name: name.value, color: color.get()});
       closeModal();
-      toast("Renamed");
+      toast("Saved the folder");
       await loadDocuments();
     }catch(e){ folderError(e, name, fail); }
-  }, "Rename");
+  }, "Save");
 }
 
 function confirmDeleteFolder(f){
@@ -269,7 +318,7 @@ function folderCounts(f){
 
 function folderActions(f){
   if(!canKeepFolders()) return null;
-  return [h("button", {class: "btn sm", type: "button", onclick: event => { event.stopPropagation(); openRenameFolder(f); }}, "Rename"),
+  return [h("button", {class: "btn sm", type: "button", onclick: event => { event.stopPropagation(); openEditFolder(f); }}, "Edit"),
           h("button", {class: "btn sm", type: "button", onclick: event => { event.stopPropagation(); confirmDeleteFolder(f); }}, "Remove")];
 }
 
@@ -305,7 +354,7 @@ function listView(folders, browsing){
 
   const folderRows = folders.map(f => {
     const row = h("tr", {class: "folder-row", tabindex: "0", onclick: () => openFolder(f.id), onkeydown: onEnter(() => openFolder(f.id))},
-      h("td", {class: "wrap", colspan: "2"}, h("span", {class: "row-ic"}, icon("folder")), h("span", {class: "c-title"}, f.name)),
+      h("td", {class: "wrap", colspan: "2"}, h("span", {class: "row-ic"}, folderIcon(f)), h("span", {class: "c-title"}, f.name)),
       h("td", {class: "folder-info", colspan: String(columns - 3)}, folderCounts(f)),
       h("td", {class: "usr-acts"}, folderActions(f)));
     makeDropTarget(row, f.id);
@@ -342,7 +391,7 @@ function gridView(folders, browsing){
   if(folders.length) cards.push(h("div", {class: "g-label"}, "Folders"));
   for(const f of folders){
     const card = h("div", {class: "gcard folder", tabindex: "0", onclick: () => openFolder(f.id), onkeydown: onEnter(() => openFolder(f.id))},
-      h("div", {class: "g-ic"}, icon("folder")),
+      h("div", {class: "g-ic"}, folderIcon(f)),
       h("div", {class: "g-title"}, f.name),
       h("div", {class: "g-sub"}, folderCounts(f)),
       canKeepFolders() ? h("div", {class: "g-acts"}, folderActions(f)) : null);

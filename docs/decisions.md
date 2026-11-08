@@ -310,3 +310,11 @@ Settled calls, with the reason. Check here before changing the schema or the rul
   messages and scripts, `APP_NAME`. **Inside, the old spelling stays** (`config/documentator.php`, the `X-Documentator` header, the
   `documentator.*` permission names stored in roles, `DOCUMENTATOR_*` settings, the `/build/documentator/` folder, the project
   folder, and the name of the handover PDF): renaming those would break stored roles and sessions and changes nothing on screen.
+
+## Folder colors (9 Nov 2026, the user's call)
+
+- A folder has an optional color (`folders.color`, `#RRGGBB`, anything else is refused). The folder windows offer swatches for the
+  rainbow (red, orange, yellow, green, blue, indigo, violet), black, white and gray, plus **Pick any color** for a color of
+  their own. A new folder starts blue; one with no color shows the app's own blue. The folder's **Rename** button is now **Edit**
+  (name and color together). A color change is a column change in Audits ("Color"). Pale and very dark colors get a thin edge so a
+  white or black folder can still be seen.

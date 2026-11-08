@@ -33,7 +33,7 @@ class FolderController extends Controller
 
         return response()->json([
             'folders' => Folder::query()->orderBy('name')->get()->map(fn (Folder $f) => [
-                'id' => $f->id, 'parentId' => $f->parent_id, 'name' => $f->name, 'path' => $paths[$f->id] ?? $f->name,
+                'id' => $f->id, 'parentId' => $f->parent_id, 'name' => $f->name, 'color' => $f->color, 'path' => $paths[$f->id] ?? $f->name,
                 'documents' => (int) ($counts[$f->id] ?? 0), 'folders' => (int) ($children[$f->id] ?? 0),
             ])->all(),
             'rootDocuments' => (int) ($counts[''] ?? 0),
@@ -45,34 +45,38 @@ class FolderController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'parent_id' => ['nullable', 'integer', 'exists:folders,id'],
+            'color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
         ]);
         $name = $this->clean($data['name']);
         $parent = isset($data['parent_id']) ? (int) $data['parent_id'] : null;
+        $color = isset($data['color']) ? strtoupper($data['color']) : null;
         $this->mustFit($name, $parent);
         if (Folder::depth($parent) >= Folder::MAX_DEPTH) {
             throw new ApiError(422, 'invalid', ['field' => 'parent_id', 'message' => 'depth']);
         }
         $user = SessionUser::resolve($request);
 
-        $folder = DB::transaction(function () use ($name, $parent, $user) {
-            $folder = Folder::create(['parent_id' => $parent, 'name' => $name, 'created_by' => $user->id, 'updated_by' => $user->id]);
-            ChangeLog::created('folders', $folder->id, ['parent_id' => $parent, 'name' => $name, 'created_by' => $user->id], $user);
+        $folder = DB::transaction(function () use ($name, $parent, $color, $user) {
+            $folder = Folder::create(['parent_id' => $parent, 'name' => $name, 'color' => $color, 'created_by' => $user->id, 'updated_by' => $user->id]);
+            ChangeLog::created('folders', $folder->id, ['parent_id' => $parent, 'name' => $name, 'color' => $color, 'created_by' => $user->id], $user);
             AuditLog::record($user, 'folder.created', $name, entityType: 'folder', entityId: (string) $folder->id);
 
             return $folder;
         });
 
-        return response()->json(['folder' => ['id' => $folder->id, 'parentId' => $folder->parent_id, 'name' => $folder->name]], 201);
+        return response()->json(['folder' => ['id' => $folder->id, 'parentId' => $folder->parent_id, 'name' => $folder->name, 'color' => $folder->color]], 201);
     }
 
-    /** Renames it, moves it into another folder (or to the top level with parent_id null), or both. */
+    /** Renames it, recolours it, moves it into another folder (or to the top level with parent_id null), or any of those. */
     public function update(Request $request, Folder $folder): JsonResponse
     {
         $data = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:100'],
             'parent_id' => ['sometimes', 'nullable', 'integer', 'exists:folders,id'],
+            'color' => ['sometimes', 'nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
         ]);
         $name = isset($data['name']) ? $this->clean($data['name']) : $folder->name;
+        $color = array_key_exists('color', $data) ? (isset($data['color']) ? strtoupper($data['color']) : null) : $folder->color;
         $parent = array_key_exists('parent_id', $data) ? ($data['parent_id'] === null ? null : (int) $data['parent_id']) : $folder->parent_id;
 
         if ($parent !== null && in_array($parent, Folder::withDescendants($folder->id), true)) {
@@ -86,10 +90,10 @@ class FolderController extends Controller
         }
         $user = SessionUser::resolve($request);
 
-        DB::transaction(function () use ($folder, $name, $parent, $user) {
-            $before = ['parent_id' => $folder->parent_id, 'name' => $folder->name, 'updated_by' => $folder->updated_by];
-            $after = ['parent_id' => $parent, 'name' => $name, 'updated_by' => $user->id];
-            if ($before['parent_id'] === $parent && $before['name'] === $name) {
+        DB::transaction(function () use ($folder, $name, $parent, $color, $user) {
+            $before = ['parent_id' => $folder->parent_id, 'name' => $folder->name, 'color' => $folder->color, 'updated_by' => $folder->updated_by];
+            $after = ['parent_id' => $parent, 'name' => $name, 'color' => $color, 'updated_by' => $user->id];
+            if ($before['parent_id'] === $parent && $before['name'] === $name && $before['color'] === $color) {
                 return;
             }
             $folder->update($after);
@@ -97,7 +101,7 @@ class FolderController extends Controller
             AuditLog::record($user, 'folder.updated', $name, entityType: 'folder', entityId: (string) $folder->id);
         });
 
-        return response()->json(['folder' => ['id' => $folder->id, 'parentId' => $folder->parent_id, 'name' => $folder->name]]);
+        return response()->json(['folder' => ['id' => $folder->id, 'parentId' => $folder->parent_id, 'name' => $folder->name, 'color' => $folder->color]]);
     }
 
     /** Only an empty folder: no documents, no folders inside. */
@@ -109,7 +113,7 @@ class FolderController extends Controller
         $user = SessionUser::resolve($request);
 
         DB::transaction(function () use ($folder, $user) {
-            ChangeLog::deleted('folders', $folder->id, ['parent_id' => $folder->parent_id, 'name' => $folder->name, 'created_by' => $folder->created_by], $user);
+            ChangeLog::deleted('folders', $folder->id, ['parent_id' => $folder->parent_id, 'name' => $folder->name, 'color' => $folder->color, 'created_by' => $folder->created_by], $user);
             $folder->delete();
             AuditLog::record($user, 'folder.deleted', $folder->name, entityType: 'folder', entityId: (string) $folder->id);
         });

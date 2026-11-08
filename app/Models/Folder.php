@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** A folder: holds documents and other folders. Organises only; a document's department still decides who may use it. */
-#[Fillable(['parent_id', 'name', 'created_by', 'updated_by'])]
+#[Fillable(['parent_id', 'name', 'color', 'created_by', 'updated_by'])]
 class Folder extends Model
 {
     /** The deepest a folder may sit (the top level is 1). */
