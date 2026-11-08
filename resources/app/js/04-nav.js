@@ -1,5 +1,6 @@
-/* ---------- the panels along the top ---------- */
+/* ---------- the side bar: panels, and a rail that folds in and out ---------- */
 const PAGES = ["documents", "users", "archiving", "audits"];
+const PAGE_TITLES = {documents: "Documents", users: "Users", archiving: "Archiving", audits: "Audits"};
 
 function pageFromHash(){
   const name = location.hash.replace(/^#/, "");
@@ -10,18 +11,53 @@ function pageFromHash(){
 function showPage(name){
   if(!PAGES.includes(name)) name = "documents";
   for(const page of PAGES) $("#page-" + page).hidden = page !== name;
-  for(const tab of document.querySelectorAll("#tabs .tab")){
-    const on = tab.dataset.page === name;
-    tab.classList.toggle("on", on);
-    if(on) tab.setAttribute("aria-current", "page"); else tab.removeAttribute("aria-current");
+  for(const item of document.querySelectorAll("#tabs .nav-item")){
+    if(item.dataset.page === name) item.setAttribute("aria-current", "page"); else item.removeAttribute("aria-current");
   }
+  $("#tb-title").textContent = PAGE_TITLES[name];
   if(location.hash !== "#" + name) history.replaceState(null, "", "#" + name);
+  $("#main").scrollTop = 0;
   window.scrollTo(0, 0);
+  closeNav();
   if(name === "documents") loadDocuments();
   if(name === "audits") loadAudits();
 }
 
+// the wide screen's side bar folds to icons and back; the choice is kept in this browser
+function updateRailButton(){
+  const folded = document.documentElement.getAttribute("data-rail") === "1";
+  const button = $("#rail-btn");
+  const label = folded ? "Expand the sidebar" : "Collapse the sidebar";
+  button.setAttribute("aria-label", label);
+  button.title = label;
+  button.setAttribute("aria-pressed", String(folded));
+}
+function toggleRail(){
+  const folded = document.documentElement.getAttribute("data-rail") === "1";
+  if(folded) document.documentElement.removeAttribute("data-rail"); else document.documentElement.setAttribute("data-rail", "1");
+  try{ localStorage.setItem("documentator.rail.v1", folded ? "0" : "1"); }catch(e){}
+  updateRailButton();
+}
+
+// on a narrow screen the side bar slides over the page
+function openNav(){
+  document.documentElement.setAttribute("data-nav", "open");
+  $("#nav-scrim").hidden = false;
+  const current = document.querySelector("#tabs .nav-item[aria-current]");
+  if(current) current.focus();
+}
+function closeNav(){
+  if(document.documentElement.getAttribute("data-nav") !== "open") return;
+  document.documentElement.removeAttribute("data-nav");
+  $("#nav-scrim").hidden = true;
+}
+
 $("#tabs").addEventListener("click", event => {
-  const tab = event.target.closest(".tab");
-  if(tab) showPage(tab.dataset.page);
+  const item = event.target.closest(".nav-item");
+  if(item) showPage(item.dataset.page);
 });
+$("#rail-btn").addEventListener("click", toggleRail);
+$("#nav-open").addEventListener("click", openNav);
+$("#nav-scrim").addEventListener("click", closeNav);
+document.addEventListener("keydown", event => { if(event.key === "Escape") closeNav(); });
+updateRailButton();

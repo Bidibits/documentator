@@ -109,3 +109,10 @@ Settled calls, with the reason. Check here before changing the schema or the rul
   id". Changes made from the command line are credited to "The command line", not to the account they touch. Until roles
   exist any signed-in person can read Audits; it will need its own right, as in KVNsys (`audits.view`). Not in Audits: sign-ins
   and file views/downloads, which stay in the older `audit_logs` (no screen yet).
+
+- **Navigation is a left side bar, like PMS (8 Nov 2026, the user's call):** it replaced the tabs along the top. Groups
+  "Documents" (Documents, Archiving) and "Administration" (Users, Audits); the signed-in person and Sign out at the bottom. On
+  a wide screen the toggle in the top strip folds it to icons and back, and the choice is kept in this browser
+  (`documentator.rail.v1`, applied before first paint by `head.js`). Under 1024 px it slides over the page from the menu
+  button and closes on picking a panel, on Esc, or on tapping outside it. The CSS follows PMS's `04-app-shell.css` and
+  `24-responsive-layout.css`.

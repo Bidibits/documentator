@@ -1,29 +1,81 @@
-/* ---------- the top bar of the signed-in app ---------- */
+/* ---------- the side bar and the top strip of the signed-in app (after PMS) ---------- */
 .app[hidden]{display:none}
-.topbar{
-  display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 24px;
-  background:var(--surface); border-bottom:1px solid var(--line);
-}
-.brand{display:flex; align-items:center; gap:12px; min-width:0}
-.brand .t{display:flex; flex-direction:column; min-width:0}
-.brand b{font-size:15px}
-.brand .t span{font-size:12.5px; color:var(--ink-3)}
-.tabs{display:flex; gap:2px; flex:1; justify-content:center; min-width:0; overflow-x:auto}
-.tab{
-  border:0; background:transparent; color:var(--ink-3); font:inherit; font-weight:550; font-size:14px; padding:8px 14px;
-  border-radius:var(--r); cursor:pointer; white-space:nowrap; transition:background-color .12s, color .12s;
-}
-.tab:hover{color:var(--ink); background:var(--surface-2)}
-.tab.on{color:var(--accent-text); background:var(--accent-soft)}
-.tab:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
 .page[hidden]{display:none}
-.who{display:flex; align-items:center; gap:12px}
-.who-name{font-weight:550; color:var(--ink-2); overflow-wrap:anywhere}
-@media (max-width:900px){
-  .topbar{flex-wrap:wrap}
-  .tabs{order:3; flex-basis:100%; justify-content:flex-start}
+.app{display:grid; grid-template-columns:var(--rail) minmax(0,1fr); min-height:100vh; min-height:100dvh}
+.sidebar{
+  position:sticky; top:0; height:100vh; height:100dvh; display:flex; flex-direction:column; gap:8px;
+  padding:14px 10px 12px 12px; min-width:0; z-index:20;
 }
-@media (max-width:520px){
-  .topbar{padding:10px 16px}
-  .brand .t span{display:none}
+.sb-brand{display:flex; align-items:center; gap:11px; padding:6px 8px 12px; min-width:0}
+.sb-brand .t{min-width:0; display:flex; flex-direction:column}
+.sb-brand .nm{font-weight:650; font-size:15.5px; line-height:1.2; font-stretch:95%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.sb-brand .sub{font-size:12px; line-height:1.3; color:var(--ink-3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.sb-nav{flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:18px; padding:4px 0; scrollbar-width:thin}
+.sb-group{display:flex; flex-direction:column; gap:2px}
+.sb-label{font-size:11px; font-weight:600; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-3); padding:0 10px 6px}
+.nav-item{
+  position:relative; display:flex; align-items:center; gap:11px; width:100%; height:36px; padding:0 10px;
+  border:1px solid transparent; border-radius:var(--r); background:transparent; color:var(--ink-2);
+  font:inherit; font-weight:500; font-size:13.5px; text-align:left; white-space:nowrap; cursor:pointer; transition:background .12s, color .12s;
+}
+.nav-item .ic{color:var(--ink-3); transition:color .12s}
+.nav-item:hover{background:var(--rail-hover); color:var(--ink)}
+.nav-item:hover .ic{color:var(--ink-2)}
+.nav-item:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+.nav-item[aria-current="page"]{background:var(--surface); color:var(--ink); font-weight:600; border-color:var(--line); box-shadow:var(--shadow-xs)}
+.nav-item[aria-current="page"] .ic{color:var(--accent)}
+.nav-item .lbl{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis}
+.sb-foot{display:flex; flex-direction:column; gap:4px; padding-top:10px; border-top:1px solid var(--line)}
+.sb-user{display:flex; align-items:center; gap:10px; width:100%; padding:7px 8px; border-radius:var(--r); color:var(--ink)}
+.sb-user .av{
+  width:30px; height:30px; border-radius:50%; flex:none; display:grid; place-items:center;
+  background:var(--accent-soft); color:var(--accent-text); font-weight:650; font-size:13px;
+}
+.sb-user .t{flex:1; min-width:0; display:flex; flex-direction:column; line-height:1.25}
+.sb-user .nm{font-weight:600; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.sb-user .rl{font-size:12px; color:var(--ink-3)}
+.nav-scrim{position:fixed; inset:0; background:var(--scrim); z-index:74}
+.nav-scrim[hidden]{display:none}
+
+@media (min-width:1024px){
+  html[data-rail="1"]{--rail:76px}
+  html[data-rail="1"] .sb-label,
+  html[data-rail="1"] .nav-item .lbl,
+  html[data-rail="1"] .sb-brand .t,
+  html[data-rail="1"] .sb-user .t{display:none}
+  html[data-rail="1"] .sidebar{padding-inline:12px}
+  html[data-rail="1"] .sb-brand{justify-content:center; padding-inline:0}
+  html[data-rail="1"] .nav-item{justify-content:center; padding:0}
+  html[data-rail="1"] .sb-group{gap:4px}
+  html[data-rail="1"] .sb-nav{gap:12px}
+  html[data-rail="1"] .sb-group + .sb-group{border-top:1px solid var(--line); padding-top:12px}
+  html[data-rail="1"] .sb-user{justify-content:center; padding:7px 0}
+}
+
+.main{
+  min-width:0; display:flex; flex-direction:column; margin:8px 8px 8px 0; background:var(--surface);
+  border:1px solid var(--line); border-radius:var(--r-xl); box-shadow:var(--shadow-xs);
+  height:calc(100vh - 16px); height:calc(100dvh - 16px); overflow:auto; overscroll-behavior:contain;
+  scrollbar-width:thin; scrollbar-color:var(--line-2) transparent;
+}
+.topbar{
+  position:sticky; top:0; z-index:30; padding:10px 0; border-bottom:1px solid var(--line);
+  background:color-mix(in srgb, var(--surface) 86%, transparent);
+  -webkit-backdrop-filter:saturate(1.5) blur(12px); backdrop-filter:saturate(1.5) blur(12px);
+}
+.topbar-in{display:flex; align-items:center; gap:10px; max-width:1200px; margin:0 auto; padding:0 32px; min-height:40px}
+.tb-title{font-weight:600; font-size:14px; color:var(--ink-2)}
+
+@media (min-width:1024px){ .only-narrow{display:none !important} }
+@media (max-width:1023px){
+  .app{display:block}
+  .sidebar{
+    position:fixed; left:0; top:0; bottom:0; width:min(290px, 86vw); height:auto; z-index:75; background:var(--bg);
+    transform:translateX(-104%); transition:transform .22s cubic-bezier(.2,.8,.2,1); box-shadow:var(--shadow-lg);
+  }
+  html[data-nav="open"] .sidebar{transform:none}
+  .only-wide{display:none !important}
+  .main{margin:0; border:0; border-radius:0; height:auto; min-height:100vh; overflow:visible; box-shadow:none}
+  .topbar-in{padding:0 16px}
+  body{background:var(--surface)}
 }
