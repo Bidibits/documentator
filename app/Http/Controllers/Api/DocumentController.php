@@ -47,6 +47,11 @@ class DocumentController extends Controller
                 ->filter(fn ($d) => $grants->can(Access::TAGS['register'], $d->id))
                 ->map(fn ($d) => ['id' => $d->id, 'name' => $d->name])->values()->all(),
             'canRegisterNone' => $grants->can(Access::TAGS['register'], null),
+            // the departments this person may move a document into when correcting its details (needs the Update tag there)
+            'editDepartments' => Department::query()->where('active', true)->orderBy('name')->get(['id', 'name'])
+                ->filter(fn ($d) => $grants->can(Access::TAGS['update'], $d->id))
+                ->map(fn ($d) => ['id' => $d->id, 'name' => $d->name])->values()->all(),
+            'canEditNone' => $grants->can(Access::TAGS['update'], null),
             'types' => $this->distinct('doc_type', $grants),
         ]);
     }
@@ -109,9 +114,11 @@ class DocumentController extends Controller
                 $version = DocumentVersion::create([
                     'document_id' => $document->id,
                     'rev_no' => 0,
+                    'issued_on' => $data['issued_on'] ?? null,
+                    'expires_on' => $data['expires_on'] ?? null,
                     'created_by' => $user->id,
                 ]);
-                ChangeLog::created('document_versions', $version->id, ['document_id' => $document->id, 'rev_no' => 0, 'created_by' => $user->id], $user);
+                ChangeLog::created('document_versions', $version->id, ['document_id' => $document->id, 'rev_no' => 0, 'issued_on' => $data['issued_on'] ?? null, 'expires_on' => $data['expires_on'] ?? null, 'created_by' => $user->id], $user);
 
                 foreach ($data['files'] as $order => $upload) {
                     $stored[] = $this->keep($version, $upload, $order, $user);
@@ -140,6 +147,96 @@ class DocumentController extends Controller
     }
 
     /**
+     * Corrects a document's details after registering: title, type, department, description, the two dates and the
+     * physical location. The code stays as registered (it is what is written on the paper), and the files and versions are
+     * untouched (a new file is a new version). Needs the Update tag in the document's department, and in the new one when
+     * the document moves. The dates are also corrected on the current version, which carries them. Only the fields sent
+     * change; each changed column is logged.
+     */
+    public function update(Request $request, Document $document): JsonResponse
+    {
+        $user = SessionUser::resolve($request);
+        $grants = Access::grants($user);
+        if (! $grants->can(Access::TAGS['update'], $document->department_id)) {
+            throw ApiError::forbidden();
+        }
+
+        $data = $request->validate([
+            'title' => ['sometimes', 'required', 'string', 'max:200'],
+            'doc_type' => ['sometimes', 'nullable', 'string', 'max:64'],
+            'department_id' => ['sometimes', 'nullable', 'integer', Rule::exists('departments', 'id')],
+            'description' => ['sometimes', 'nullable', 'string', 'max:2000'],
+            'issued_on' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
+            'expires_on' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
+            'location_note' => ['sometimes', 'nullable', 'string', 'max:200'],
+        ]);
+        if (isset($data['title']) && trim($data['title']) === '') {
+            throw new ApiError(422, 'invalid', ['field' => 'title']);
+        }
+        if (isset($data['department_id'])) {
+            $data['department_id'] = (int) $data['department_id'];   // a form sends it as text
+        }
+
+        if (array_key_exists('department_id', $data) && $data['department_id'] !== $document->department_id) {
+            $to = $data['department_id'];
+            if (! $grants->can(Access::TAGS['update'], $to)) {
+                throw ApiError::forbidden();   // may not put documents into that department
+            }
+            if ($to !== null && ! Department::query()->whereKey($to)->where('active', true)->exists()) {
+                throw new ApiError(422, 'invalid', ['field' => 'department_id']);   // switched off: not offered to new arrivals
+            }
+        }
+
+        $before = $this->editable($document);
+        $after = $data + $before;
+        $after = array_map(fn ($value) => is_string($value) && trim($value) === '' ? null : (is_string($value) ? trim($value) : $value), $after);
+        if ($after['issued_on'] !== null && $after['expires_on'] !== null && $after['expires_on'] < $after['issued_on']) {
+            throw new ApiError(422, 'invalid', ['field' => 'expires_on']);
+        }
+        $after['updated_by'] = $user->id;
+
+        DB::transaction(function () use ($document, $before, $after, $user) {
+            $changes = Arr::except($after, ['updated_by']);
+            if ($changes === Arr::except($before, ['updated_by'])) {
+                return;   // nothing differs: nothing is saved or logged
+            }
+            $document->update($after);
+            ChangeLog::updated('documents', $document->id, $before, $after, $user);
+
+            // the current version carries the dates, so a corrected date is corrected there too
+            $datesChanged = $before['issued_on'] !== $after['issued_on'] || $before['expires_on'] !== $after['expires_on'];
+            if ($datesChanged && $document->current_version_id !== null) {
+                $version = DocumentVersion::find($document->current_version_id);
+                $dates = ['issued_on' => $after['issued_on'], 'expires_on' => $after['expires_on']];
+                $was = ['issued_on' => $version->issued_on?->format('Y-m-d'), 'expires_on' => $version->expires_on?->format('Y-m-d')];
+                $version->update($dates);
+                ChangeLog::updated('document_versions', $version->id, $was, $dates, $user);
+            }
+        });
+
+        AuditLog::record($user, 'document.updated', $document->title, entityType: 'document', entityId: $document->code);
+
+        $document->refresh()->load(Document::DETAIL);
+
+        return response()->json(['document' => $document->view(true, $grants)]);
+    }
+
+    /** @return array<string, mixed> the columns a person may correct, as they are now (dates as typed) */
+    private function editable(Document $document): array
+    {
+        return [
+            'title' => $document->title,
+            'doc_type' => $document->doc_type,
+            'department_id' => $document->department_id,
+            'description' => $document->description,
+            'issued_on' => $document->issued_on?->format('Y-m-d'),
+            'expires_on' => $document->expires_on?->format('Y-m-d'),
+            'location_note' => $document->location_note,
+            'updated_by' => $document->updated_by,
+        ];
+    }
+
+    /**
      * Adds a new version (Ver 1, 2, ...) of a document: one or more files and an optional note on what changed. The
      * earlier versions and their files stay as they were; the new one becomes the current version.
      */
@@ -153,29 +250,46 @@ class DocumentController extends Controller
 
         $data = $request->validate([
             'change_note' => ['nullable', 'string', 'max:500'],
+            // a renewal: the new version carries new dates, and the document moves on to them
+            'issued_on' => ['nullable', 'date_format:Y-m-d'],
+            'expires_on' => ['nullable', 'date_format:Y-m-d'],
         ] + $this->fileRules());
+
+        $renewal = $request->has('issued_on') || $request->has('expires_on');
+        $issued = $renewal ? ($data['issued_on'] ?? null) : $document->issued_on?->format('Y-m-d');
+        $expires = $renewal ? ($data['expires_on'] ?? null) : $document->expires_on?->format('Y-m-d');
+        if ($renewal && $issued !== null && $expires !== null && $expires < $issued) {
+            throw new ApiError(422, 'invalid', ['field' => 'expires_on']);
+        }
 
         $stored = [];
 
         try {
-            $number = DB::transaction(function () use ($data, $document, $user, &$stored) {
+            $number = DB::transaction(function () use ($data, $document, $user, $renewal, $issued, $expires, &$stored) {
                 $number = (int) DocumentVersion::where('document_id', $document->id)->max('rev_no') + 1;
 
+                // the version keeps the dates it was valid for; a version that is not a renewal carries the document's dates on
                 $version = DocumentVersion::create([
                     'document_id' => $document->id,
                     'rev_no' => $number,
                     'change_note' => $data['change_note'] ?? null,
+                    'issued_on' => $issued,
+                    'expires_on' => $expires,
                     'created_by' => $user->id,
                 ]);
-                ChangeLog::created('document_versions', $version->id, ['document_id' => $document->id, 'rev_no' => $number, 'change_note' => $data['change_note'] ?? null, 'created_by' => $user->id], $user);
+                ChangeLog::created('document_versions', $version->id, ['document_id' => $document->id, 'rev_no' => $number, 'change_note' => $data['change_note'] ?? null, 'issued_on' => $issued, 'expires_on' => $expires, 'created_by' => $user->id], $user);
 
                 foreach ($data['files'] as $order => $upload) {
                     $stored[] = $this->keep($version, $upload, $order, $user);
                 }
 
-                $before = Arr::only($document->getAttributes(), ['current_version_id', 'updated_by']);
-                $document->update(['current_version_id' => $version->id, 'updated_by' => $user->id]);
-                ChangeLog::updated('documents', $document->id, $before, ['current_version_id' => $version->id, 'updated_by' => $user->id], $user);
+                $before = Arr::only($document->getAttributes(), ['current_version_id', 'updated_by']) + ['issued_on' => $document->issued_on?->format('Y-m-d'), 'expires_on' => $document->expires_on?->format('Y-m-d')];
+                $changes = ['current_version_id' => $version->id, 'updated_by' => $user->id];
+                if ($renewal) {
+                    $changes += ['issued_on' => $issued, 'expires_on' => $expires];
+                }
+                $document->update($changes);
+                ChangeLog::updated('documents', $document->id, $before, $changes, $user);
 
                 return $number;
             });
@@ -188,7 +302,7 @@ class DocumentController extends Controller
             throw $e;
         }
 
-        AuditLog::record($user, 'version.created', 'Ver '.$number, entityType: 'document', entityId: $document->code);
+        AuditLog::record($user, $renewal ? 'document.renewed' : 'version.created', 'Ver '.$number, entityType: 'document', entityId: $document->code);
 
         $document->load(Document::DETAIL);
 

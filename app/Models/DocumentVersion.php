@@ -7,14 +7,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['document_id', 'rev_no', 'change_note', 'created_by'])]
+#[Fillable(['document_id', 'rev_no', 'change_note', 'issued_on', 'expires_on', 'created_by'])]
 class DocumentVersion extends Model
 {
     public const UPDATED_AT = null;
 
     protected function casts(): array
     {
-        return ['archived_at' => 'datetime', 'restored_at' => 'datetime'];
+        return ['archived_at' => 'datetime', 'restored_at' => 'datetime', 'issued_on' => 'date', 'expires_on' => 'date'];
     }
 
     public function archiver(): BelongsTo
@@ -51,6 +51,8 @@ class DocumentVersion extends Model
             'id' => $this->id,
             'rev' => $this->rev_no,
             'changeNote' => (string) $this->change_note,
+            'issuedOn' => $this->issued_on?->format('Y-m-d') ?? '',
+            'expiresOn' => $this->expires_on?->format('Y-m-d') ?? '',
             'createdBy' => $this->creator?->name ?? '',
             'createdAt' => User::stamp($this->created_at),
             'archived' => $this->isArchived(),

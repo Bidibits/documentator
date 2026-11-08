@@ -1,5 +1,5 @@
 /* ---------- the documents list ---------- */
-const docs = {all: [], departments: [], canRegisterNone: false, types: [], query: "", loaded: false};
+const docs = {all: [], departments: [], canRegisterNone: false, editDepartments: [], canEditNone: false, types: [], query: "", status: "", loaded: false};
 
 // offered in the Type box besides the types already in use (a plain list for now; an admin-kept list can come later)
 const DEFAULT_TYPES = ["Contract", "MOA", "Permit / License", "Form", "Template", "Policy", "Memorandum",
@@ -16,10 +16,13 @@ async function loadDocuments(){
     docs.all = data.documents || [];
     docs.departments = data.departments || [];
     docs.canRegisterNone = !!data.canRegisterNone;
+    docs.editDepartments = data.editDepartments || [];
+    docs.canEditNone = !!data.canEditNone;
     docs.types = data.types || [];
     docs.loaded = true;
     fillSuggestionLists();
     renderDocuments();
+    renderExpiring();
   }catch(e){
     if(e.status === 401) return;   // the sign-in screen is already coming up
     $("#doc-table").replaceChildren(emptyBlock("Could not load the documents", errorWords(e)));
@@ -28,9 +31,11 @@ async function loadDocuments(){
 }
 
 function clearDocuments(){
-  docs.all = []; docs.departments = []; docs.canRegisterNone = false; docs.types = []; docs.query = ""; docs.loaded = false;
+  docs.all = []; docs.departments = []; docs.canRegisterNone = false; docs.editDepartments = []; docs.canEditNone = false; docs.types = []; docs.query = ""; docs.status = ""; docs.loaded = false;
   fillSuggestionLists();
   $("#doc-q").value = "";
+  $("#doc-status").value = "";
+  clearExpiring();
   $("#doc-table").replaceChildren();
   $("#doc-count").textContent = "";
 }
@@ -54,13 +59,15 @@ function matches(doc, query){
   return words.every(w => hay.includes(w));
 }
 
-// how a document's expiry date shows: the date, with a mark once it has passed or is within 30 days
-function expiryContent(doc){
-  const days = daysUntil(doc.expiresOn);
-  const mark = days < 0 ? h("span", {class: "pill p-over"}, "Expired")
-    : days <= 30 ? h("span", {class: "pill p-due"}, days === 0 ? "Today" : "In " + plural(days, "day"))
+// how a document's expiry date shows: the date, with a mark once it has passed or is close (the server says which)
+function expiryMark(doc){
+  const days = doc.daysLeft;
+  return doc.expiryStatus === "expired" ? h("span", {class: "pill p-over"}, days === -1 ? "Expired yesterday" : "Expired " + plural(-days, "day") + " ago")
+    : doc.expiryStatus === "expiring" ? h("span", {class: "pill p-due"}, days === 0 ? "Today" : "In " + plural(days, "day"))
     : null;
-  return h("span", {class: "exp"}, fmtDate(doc.expiresOn), mark);
+}
+function expiryContent(doc){
+  return h("span", {class: "exp"}, fmtDate(doc.expiresOn), expiryMark(doc));
 }
 function expiryCell(doc){
   return doc.expiresOn ? h("td", {}, expiryContent(doc)) : h("td", {class: "muted-cell"}, "-");
@@ -71,8 +78,13 @@ function usedCell(at){
   return at ? h("td", {class: "nowrap", title: fmtStamp(at)}, fmtStamp(at).split(",")[0]) : h("td", {class: "muted-cell"}, "-");
 }
 
+// the expiry filter above the table
+function statusMatches(doc, status){
+  return status === "" || (status === "attention" ? doc.expiryStatus === "expiring" || doc.expiryStatus === "expired" : doc.expiryStatus === status);
+}
+
 function renderDocuments(){
-  const shown = docs.all.filter(d => matches(d, docs.query));
+  const shown = docs.all.filter(d => matches(d, docs.query) && statusMatches(d, docs.status));
   $("#doc-count").textContent = docs.all.length === 0 ? "" :
     shown.length === docs.all.length ? plural(docs.all.length, "document") : shown.length + " of " + docs.all.length;
 
@@ -82,7 +94,7 @@ function renderDocuments(){
     return;
   }
   if(shown.length === 0){
-    $("#doc-table").replaceChildren(emptyBlock("Nothing matches", "No document has all of those words in its code, title, type, department or location."));
+    $("#doc-table").replaceChildren(emptyBlock("Nothing matches", "No document matches the words and the expiry filter you chose."));
     return;
   }
 
@@ -111,4 +123,5 @@ function renderDocuments(){
 }
 
 $("#doc-q").addEventListener("input", event => { docs.query = event.target.value; renderDocuments(); });
+$("#doc-status").addEventListener("change", event => { docs.status = event.target.value; renderDocuments(); });
 $("#doc-new").addEventListener("click", () => openUpload());

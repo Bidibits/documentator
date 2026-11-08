@@ -24,6 +24,9 @@ return [
     // the office's time zone: the date in a suggested code is today's date here
     'timezone' => env('DOCUMENTATOR_TIMEZONE', 'Asia/Manila'),
 
+    // a document is "expiring soon" this many days before its expiry date (the dates are the office's calendar days)
+    'expiry_warning_days' => (int) env('DOCUMENTATOR_EXPIRY_WARNING_DAYS', 30),
+
     'uploads' => [
         'max_files' => 10,
         'max_kilobytes' => 25 * 1024,

@@ -13,7 +13,9 @@ function showHome(user){
   $("#signin").hidden = true;
   $("#app").hidden = false;
   document.documentElement.classList.remove("signed-out");
-  showPage(pageFromHash());
+  const first = pageFromHash();
+  showPage(first);
+  if(can("documentator.document.view") && first !== "documents" && first !== "expiring") loadDocuments();   // the Expiring count in the side bar
 }
 
 async function signOut(){

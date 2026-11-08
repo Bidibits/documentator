@@ -26,9 +26,12 @@ async function openDetail(id){
   ]);
 
   $("#d-body").replaceChildren(
-    section("Details", details.children.length ? details : h("p", {class: "empty-mini"}, "No details were entered.")),
+    section("Details", details.children.length ? details : h("p", {class: "empty-mini"}, "No details were entered."),
+      doc.can && doc.can.update ? h("button", {class: "btn sm", type: "button", onclick: () => openEditDetails(doc)}, "Edit details") : null),
     section("Files in the current version (Ver " + doc.rev + ")", fileList(current.files, canDownload),
-      doc.can && doc.can.update ? h("button", {class: "btn sm", type: "button", onclick: () => openNewVersion(doc)}, icon("upload"), "Upload new version") : null),
+      doc.can && doc.can.update ? h("div", {class: "sec-acts"},
+        h("button", {class: "btn sm", type: "button", onclick: () => openNewVersion(doc)}, icon("upload"), "Upload new version"),
+        doc.expiresOn ? h("button", {class: "btn sm", type: "button", onclick: () => openNewVersion(doc, true)}, icon("upload"), "Renew") : null) : null),
     section("Versions", timeline(doc.versions, current.id, canDownload)));
 
   openDrawer();
@@ -74,6 +77,12 @@ async function downloadClicked(button, file){
   finally{ button.disabled = false; }
 }
 
+// "Valid 1 Jan 2025 to 31 Dec 2025", "Issued 1 Jan 2025", "Expires 31 Dec 2025"
+function validity(v){
+  if(v.issuedOn && v.expiresOn) return "Valid " + fmtDate(v.issuedOn) + " to " + fmtDate(v.expiresOn);
+  return v.issuedOn ? "Issued " + fmtDate(v.issuedOn) : "Expires " + fmtDate(v.expiresOn);
+}
+
 // every version, newest first; an older version lists its files here with View and Download (the current one is above)
 function timeline(versions, currentId, canDownload){
   return h("div", {class: "tl"}, versions.map(v => h("div", {class: "tl-item"},
@@ -83,6 +92,7 @@ function timeline(versions, currentId, canDownload){
       h("span", {class: "tl-when"}, fmtStamp(v.createdAt))),
     h("div", {class: "tl-sub"}, (v.rev === 0 ? "Registered by " : "Uploaded by ") + (v.createdBy || "unknown") + ", " + plural(v.files.length, "file")),
     v.changeNote ? h("div", {class: "tl-note"}, v.changeNote) : null,
+    v.issuedOn || v.expiresOn ? h("div", {class: "tl-sub"}, validity(v)) : null,
     v.archived ? h("div", {class: "tl-sub"}, "Archived " + fmtStamp(v.archivedAt) + (v.archivedBy ? " by " + v.archivedBy : "") + ", packed into " + fmtSize(v.archiveSize) + ". Its files open and download more slowly.") : null,
     v.id === currentId ? h("div", {class: "tl-sub"}, "Current version, files above") : h("div", {class: "tl-files"}, fileList(v.files, canDownload)))));
 }

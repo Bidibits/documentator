@@ -61,7 +61,7 @@ class ChangeLogTest extends TestCase
         $this->assertNotContains('expires_on', array_map(fn ($c) => explode(':', $c)[0], $document));
         $this->assertContains('current_version_id: - > 1 (Created)', $document);
 
-        $this->assertSame(['document_id: - > 1 (Created)', 'rev_no: - > 0 (Created)', 'created_by: - > 1 (Created)'], $this->changes('document_versions'));
+        $this->assertSame(['document_id: - > 1 (Created)', 'rev_no: - > 0 (Created)', 'issued_on: - > 2026-11-01 (Created)', 'created_by: - > 1 (Created)'], $this->changes('document_versions'));
         $this->assertContains('original_name: - > lease.pdf (Created)', $this->changes('document_files'));
         $this->assertContains('mime: - > application/pdf (Created)', $this->changes('document_files'));
 
@@ -82,8 +82,8 @@ class ChangeLogTest extends TestCase
             ['X-Documentator' => '1', 'Accept' => 'application/json'])->assertCreated();
 
         $this->assertSame([
-            'document_id: - > 1 (Created)', 'rev_no: - > 0 (Created)', 'created_by: - > 1 (Created)',
-            'document_id: - > 1 (Created)', 'rev_no: - > 1 (Created)', 'change_note: - > Rent raised (Created)', 'created_by: - > 2 (Created)',
+            'document_id: - > 1 (Created)', 'rev_no: - > 0 (Created)', 'issued_on: - > 2026-11-01 (Created)', 'created_by: - > 1 (Created)',
+            'document_id: - > 1 (Created)', 'rev_no: - > 1 (Created)', 'change_note: - > Rent raised (Created)', 'issued_on: - > 2026-11-01 (Created)', 'created_by: - > 2 (Created)',
         ], $this->changes('document_versions'));
 
         $updates = DB::table('audit_changes')->where('table_name', 'documents')->where('change_type', 'Updated')->orderBy('id')->get();

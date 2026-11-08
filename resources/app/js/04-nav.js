@@ -1,8 +1,8 @@
 /* ---------- the side bar: panels, and a rail that folds in and out ---------- */
-const PAGES = ["documents", "users", "roles", "departments", "archiving", "audits"];
+const PAGES = ["documents", "expiring", "users", "roles", "departments", "archiving", "audits"];
 // what each panel needs (the server refuses it otherwise; this decides what is shown)
-const PAGE_RIGHTS = {documents: "documentator.document.view", users: "documentator.user.manage", roles: "documentator.role.manage", departments: "documentator.department.manage", archiving: "documentator.version.archive", audits: "documentator.audit.view"};
-const PAGE_TITLES = {documents: "Documents", users: "Users", roles: "Roles", departments: "Departments", archiving: "Archiving", audits: "Audits"};
+const PAGE_RIGHTS = {documents: "documentator.document.view", expiring: "documentator.document.view", users: "documentator.user.manage", roles: "documentator.role.manage", departments: "documentator.department.manage", archiving: "documentator.version.archive", audits: "documentator.audit.view"};
+const PAGE_TITLES = {documents: "Documents", expiring: "Expiring", users: "Users", roles: "Roles", departments: "Departments", archiving: "Archiving", audits: "Audits"};
 
 function pageFromHash(){
   const name = location.hash.replace(/^#/, "");
@@ -21,7 +21,7 @@ function showPage(name){
   $("#main").scrollTop = 0;
   window.scrollTo(0, 0);
   closeNav();
-  if(name === "documents") loadDocuments();
+  if(name === "documents" || name === "expiring") loadDocuments();
   if(name === "audits") loadAudits();
   if(name === "archiving") loadArchive();
   if(name === "users") loadUsers();

@@ -136,11 +136,15 @@ function uploadError(e, fields, takeSuggestion, fail){
 
 /* ---------- upload a new version of a document ---------- */
 // The document keeps its code and details; this adds a Ver 1, 2, ... with its own files and a note on what changed.
-function openNewVersion(doc){
+// With renew the new version also carries new dates (a permit renewed for another year): the document moves on to them,
+// the old version keeps the dates it had.
+function openNewVersion(doc, renew){
   const error = h("div", {class: "banner error", role: "alert", hidden: true}, icon("alert-circle"), h("span", {}));
   const files = h("input", {id: "fld-vfiles", name: "files", type: "file", multiple: true, accept: FILE_TYPES});
   const picked = h("ul", {class: "picked"});
   const note = h("textarea", {id: "fld-vnote", name: "change_note", maxlength: "500"});
+  const issued = h("input", {id: "fld-vissued", name: "issued_on", type: "date", value: todayISO()});
+  const expires = h("input", {id: "fld-vexpires", name: "expires_on", type: "date"});
   files.addEventListener("change", () => {
     picked.replaceChildren(...[...files.files].map(f => h("li", {}, h("span", {}, f.name), h("span", {}, fmtSize(f.size)))));
   });
@@ -150,21 +154,31 @@ function openNewVersion(doc){
   const body = h("form", {novalidate: true, onsubmit: e => e.preventDefault()},
     error,
     h("p", {class: "hint"}, doc.code + " · " + doc.title + ". This becomes Ver " + next + ". Ver " + doc.rev + " and the earlier versions stay as they are."),
+    renew ? h("p", {class: "hint"}, "Now: " + (doc.issuedOn ? "issued " + fmtDate(doc.issuedOn) + ", " : "") + "expires " + fmtDate(doc.expiresOn) + ". The renewal replaces these dates; the old dates stay with Ver " + doc.rev + " and in Audits.") : null,
     formField("vfiles", "Files for Ver " + next, files,
       FILE_TYPES_WORDS + ". Up to 10 files of 25 MB each. These are the whole new version: choose every file it should have, not only the changed ones.", true),
     picked,
-    formField("vnote", "What changed", note, "A short note for the version list, for example \"Rent raised from January\"."));
+    renew ? h("div", {class: "grid2"},
+      formField("vissued", "Issued on", issued),
+      formField("vexpires", "New expiry date", expires, "When this renewal runs out.", true)) : null,
+    formField("vnote", "What changed", note, renew ? "For example \"Renewed for 2027\"." : "A short note for the version list, for example \"Rent raised from January\"."));
 
   const save = async () => {
     error.hidden = true;
     if(files.files.length === 0) return fail("Choose at least one file.", files);
+    if(renew && !expires.value) return fail("Enter the new expiry date.", expires);
+    if(renew && issued.value && expires.value < issued.value) return fail("The expiry date cannot be before the issue date.", expires);
     const form = new FormData();
+    if(renew){
+      if(issued.value) form.append("issued_on", issued.value);
+      form.append("expires_on", expires.value);
+    }
     if(note.value.trim() !== "") form.append("change_note", note.value.trim());
     for(const file of files.files) form.append("files[]", file);
     try{
       const result = await api("POST", "/api/documents/" + doc.id + "/versions", form);
       closeModal();
-      toast("Added Ver " + result.document.rev + " to " + doc.code);
+      toast((renew ? "Renewed " + doc.code + " as Ver " : "Added Ver ") + result.document.rev + (renew ? "" : " to " + doc.code));
       await loadDocuments();
       openDetail(doc.id);
     }catch(e){
@@ -172,9 +186,68 @@ function openNewVersion(doc){
       if(e.code === "forbidden") return fail("Your role does not allow new versions of this document.");
       if(e.code === "version_conflict") return fail("Someone added a version at the same moment. Close this, look at the document again, and upload yours as the next one.");
       if(e.code === "invalid" && e.data.field === "change_note") return fail("The note can be up to 500 characters.", note);
-      uploadError(e, {files: files}, null, fail);
+      uploadError(e, {files: files, expires_on: expires}, null, fail);
     }
   };
 
-  openModal("Upload new version", body, save, "Upload");
+  openModal(renew ? "Renew " + doc.code : "Upload new version", body, save, renew ? "Renew" : "Upload");
+}
+
+/* ---------- correct a document's details ---------- */
+// Title, type, department, dates, location and description can be corrected; the code and the files stay (a new file is a new version).
+function openEditDetails(doc){
+  const {box, fail, clear} = formError();
+  const title = h("input", {id: "fld-etitle", name: "title", type: "text", maxlength: "200", value: doc.title, autocomplete: "off"});
+  const type = h("input", {id: "fld-etype", name: "doc_type", type: "text", maxlength: "64", list: "dl-types", value: doc.type, autocomplete: "off", placeholder: "Choose from the list or type your own"});
+  // the departments this person may move it into, and where it is now (even if that one is switched off)
+  const options = docs.editDepartments.slice();
+  if(doc.departmentId && !options.some(d => d.id === doc.departmentId)) options.push({id: doc.departmentId, name: doc.department});
+  const department = h("select", {id: "fld-edepartment", name: "department_id"},
+    (docs.canEditNone || !doc.departmentId) ? h("option", {value: ""}, "No department") : null,
+    options.map(d => h("option", {value: String(d.id)}, d.name)));
+  department.value = doc.departmentId ? String(doc.departmentId) : "";
+  const issued = h("input", {id: "fld-eissued", name: "issued_on", type: "date", value: doc.issuedOn});
+  const expires = h("input", {id: "fld-eexpires", name: "expires_on", type: "date", value: doc.expiresOn});
+  const location = h("input", {id: "fld-elocation", name: "location_note", type: "text", maxlength: "200", value: doc.location, autocomplete: "off"});
+  const description = h("textarea", {id: "fld-edescription", name: "description", maxlength: "2000"});
+  description.value = doc.description || "";
+
+  const body = h("form", {novalidate: true, onsubmit: e => e.preventDefault()}, box,
+    h("p", {class: "hint"}, doc.code + " keeps its code and its files. To change a file, upload a new version."),
+    formField("etitle", "Title", title, "", true),
+    h("div", {class: "grid2"},
+      formField("etype", "Type", type),
+      formField("edepartment", "Department", department, "Moving it changes who can see it.")),
+    h("div", {class: "grid2"},
+      formField("eissued", "Issued on", issued),
+      formField("eexpires", "Expires on", expires, "Fixes the date of the current version. Leave empty if it does not expire. For a renewal use Renew instead, so the old dates are kept.")),
+    formField("elocation", "Physical location", location),
+    formField("edescription", "Description", description));
+
+  openModal("Edit details of " + doc.code, body, async () => {
+    clear();
+    if(!title.value.trim()) return fail("Enter a title.", title);
+    if(expires.value && issued.value && expires.value < issued.value) return fail("The expiry date cannot be before the issue date.", expires);
+    try{
+      await api("PATCH", "/api/documents/" + doc.id, {
+        title: title.value, doc_type: type.value, department_id: department.value, issued_on: issued.value,
+        expires_on: expires.value, location_note: location.value, description: description.value,
+      });
+      closeModal();
+      toast("Saved the details of " + doc.code);
+      await loadDocuments();
+      openDetail(doc.id);
+    }catch(e){
+      if(e.status === 401) return;
+      if(e.code === "forbidden") return fail("Your role does not allow that here, or not into that department.", department);
+      if(e.code === "invalid"){
+        const field = e.data && e.data.field;
+        if(field === "expires_on") return fail("The expiry date cannot be before the issue date.", expires);
+        if(field === "department_id") return fail("That department is not available. Choose another.", department);
+        if(field === "title") return fail("Enter a title of up to 200 characters.", title);
+        return fail("Check the form: one of the fields is too long or not valid.");
+      }
+      fail(errorWords(e));
+    }
+  }, "Save");
 }

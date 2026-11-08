@@ -72,6 +72,24 @@ class Document extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /**
+     * Where the document stands against its expiry date, by the office's calendar: none (no expiry date), active,
+     * expiring (within the warning days, today included) or expired (the date has passed). days is whole days left,
+     * negative once expired, null without a date.
+     *
+     * @return array{status: string, days: ?int}
+     */
+    public function expiry(): array
+    {
+        if ($this->expires_on === null) {
+            return ['status' => 'none', 'days' => null];
+        }
+        $today = Carbon::today(config('documentator.timezone'))->startOfDay();
+        $days = (int) $today->diffInDays(Carbon::parse($this->expires_on->format('Y-m-d'), config('documentator.timezone'))->startOfDay(), false);
+
+        return ['status' => $days < 0 ? 'expired' : ($days <= (int) config('documentator.expiry_warning_days') ? 'expiring' : 'active'), 'days' => $days];
+    }
+
     /** A column added by withAccessDates (stored as UTC text), as the browser reads timestamps; empty when never. */
     private function access(string $column): string
     {
@@ -88,6 +106,7 @@ class Document extends Model
     public function view(bool $full = false, ?Grants $grants = null): array
     {
         $current = $this->currentVersion;
+        $expiry = $this->expiry();
 
         $view = [
             'id' => $this->id,
@@ -98,6 +117,8 @@ class Document extends Model
             'departmentId' => $this->department_id,
             'issuedOn' => $this->issued_on?->format('Y-m-d') ?? '',
             'expiresOn' => $this->expires_on?->format('Y-m-d') ?? '',
+            'expiryStatus' => $expiry['status'],
+            'daysLeft' => $expiry['days'],
             'location' => (string) $this->location_note,
             'rev' => $current?->rev_no,
             'fileCount' => $current?->files->count() ?? 0,

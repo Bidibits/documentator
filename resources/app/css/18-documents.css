@@ -65,6 +65,7 @@
 
 .modal p.hint{margin:0 0 16px; font-size:12.5px; color:var(--ink-3); line-height:1.45}
 .sec > .btn{margin-top:2px}
+.sec-acts{display:flex; gap:8px; flex-wrap:wrap; margin-top:2px}
 .tl-files{margin-top:8px}
 .tl-files .files{margin:0}
 .file-row .fs.access{white-space:pre-line; margin-top:2px; font-size:11.5px; color:var(--ink-4)}

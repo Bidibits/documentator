@@ -36,6 +36,8 @@ Route::middleware('documentator.signed-in')->group(function () {
         Route::get('documents/suggest-code', [DocumentController::class, 'suggestCode']);
         Route::post('documents', [DocumentController::class, 'store']);
     });
+    Route::patch('documents/{document}', [DocumentController::class, 'update'])
+        ->whereNumber('document')->middleware('documentator.can:documentator.version.create');
     Route::post('documents/{document}/versions', [DocumentController::class, 'storeVersion'])
         ->whereNumber('document')->middleware('documentator.can:documentator.version.create');
 

@@ -227,3 +227,38 @@ Settled calls, with the reason. Check here before changing the schema or the rul
   it held. `role.created / updated / deleted` are in the activity log.
 - **Not built:** per-person extra departments on top of a role, several roles per person, a delete feature, editing roles'
   global abilities (they are the Administrator's), and OneHub linking.
+
+## To do later (kept here so it is not forgotten)
+
+- **Reminders for expiring documents** (asked for 9 Nov 2026, put off by the user): a daily e-mail or Teams message listing what
+  expires soon. It needs IT to give us SMTP details or a Teams incoming-webhook address. Build it after "Expiry and renewal"
+  below, as one more scheduled command next to `documentator:archive-due`.
+- Running for real: the one-line cron job (`* * * * * php artisan schedule:run`) and backups of the database and stored files.
+- Paging for long lists (Documents, Audits, Archiving).
+- Not started from the handover plan: physical-location tree, document status workflow, per-document history timeline and
+  activity-log screen, duplicate-file warning, request forms, credentials vault, corporate-document generation, OneHub linking,
+  a document editor, viewing old .doc / .xls / PowerPoint files, deleting a document.
+
+## Editing details, expiry and renewal (9 Nov 2026, the user's call)
+
+- **Edit details** (drawer, Details section): title, type, department, description, issued / expires dates and physical
+  location can be corrected. **The code and the files stay** (the code is what is written on the paper; a new file is a new
+  version). Needs the **Update** tag in the document's department, and in the new department when it is moved ("no department"
+  is its own row; a switched-off department cannot be moved into). `PATCH /api/documents/{id}`; only fields sent change; an
+  empty one clears it; a save with no difference writes no change rows. Audited column by column (`document.updated`).
+- **Dates live on the version too** (`document_versions.issued_on / expires_on`): each version keeps the dates it was valid for,
+  so the timeline shows "Valid 12 Jan 2026 to 3 Nov 2026" on Ver 0 and the new dates on Ver 1. Correcting the document's dates
+  by hand fixes them on the **current** version as well (a typo fix, not a renewal). The migration copied each document's dates
+  onto its current version; older versions have none.
+- **Renew** (drawer, next to "Upload new version", and in the Expiring panel): a new version with a new file, new issued date
+  (today by default) and a **required new expiry date**, plus a note. It is `POST /api/documents/{id}/versions` with the dates
+  added; the document moves on to the new dates, the old ones stay with the old version and in Audits (`document.renewed`).
+  A plain new version without dates leaves the dates as they are. Dates the wrong way round are refused and nothing is saved.
+- **Status**, worked out by the server in the office's calendar (`documentator.timezone`): `none` (no expiry date), `active`,
+  `expiring` (today up to **30 days** ahead, `documentator.expiry_warning_days`) and `expired` (the date has passed). Each
+  document says `expiryStatus` and `daysLeft`; the screens mark "In 12 days" / "Expired 5 days ago".
+- **Screens:** an expiry filter on Documents (any, expiring soon or expired, expiring soon, expired, no expiry date); a new
+  **Expiring** panel (Documents group; anyone who can view documents) listing expired and expiring documents, soonest first, with a
+  Renew button where the role may update; a red count badge on its sidebar item (a dot in the folded rail).
+- **Not built:** the daily e-mail / Teams reminders (see "To do later"), a per-department warning period, and a "does not
+  expire" marker (a document without a date is simply never listed).

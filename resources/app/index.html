@@ -41,6 +41,7 @@
       <div class="sb-group">
         <div class="sb-label">Documents</div>
         <button class="nav-item" type="button" data-page="documents" title="Documents"><svg class="ic"><use href="#i-docs"></use></svg><span class="lbl">Documents</span></button>
+        <button class="nav-item" type="button" data-page="expiring" title="Expiring"><svg class="ic"><use href="#i-alert-circle"></use></svg><span class="lbl">Expiring</span><span class="nav-badge" id="exp-badge" hidden></span></button>
         <button class="nav-item" type="button" data-page="archiving" title="Archiving"><svg class="ic"><use href="#i-archive"></use></svg><span class="lbl">Archiving</span></button>
       </div>
       <div class="sb-group">
@@ -83,9 +84,27 @@
         <svg class="ic"><use href="#i-search"></use></svg>
         <input id="doc-q" type="search" placeholder="Search documents" autocomplete="off" spellcheck="false" aria-label="Search documents">
       </div>
+      <select id="doc-status" aria-label="Expiry">
+        <option value="">Any expiry</option>
+        <option value="attention">Expiring soon or expired</option>
+        <option value="expiring">Expiring soon</option>
+        <option value="expired">Expired</option>
+        <option value="none">No expiry date</option>
+      </select>
       <span class="count-note" id="doc-count"></span>
     </div>
     <div class="card tbl-card"><div class="tbl-scroll" id="doc-table"></div></div>
+    </section>
+
+    <section class="page" id="page-expiring" hidden>
+      <div class="page-head">
+        <div class="ph-t">
+          <h1>Expiring</h1>
+          <p>Documents that have expired or will within 30 days, the soonest first, such as business permits. Renew one with its new file and new dates; the old version stays in its history.</p>
+        </div>
+      </div>
+      <div class="toolbar"><span class="count-note" id="exp-count"></span></div>
+      <div class="card tbl-card"><div class="tbl-scroll" id="exp-table"></div></div>
     </section>
 
     <section class="page" id="page-users" hidden>
