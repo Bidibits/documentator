@@ -57,16 +57,15 @@ class ArchiveController extends Controller
         $pages = max(1, (int) ceil($total / $per));
         $page = min((int) ($f['page'] ?? 1), $pages);
 
+        // the files' counts, sizes and latest uses come from one grouped pass, not from sub-queries run for every version
+        $files = DB::table('document_files')->selectRaw('version_id, count(*) as files_count, coalesce(sum(size), 0) as files_size, max(last_viewed_at) as last_viewed_at, max(last_downloaded_at) as last_downloaded_at')->groupBy('version_id');
         $versions = $query
-            ->select('document_versions.*', 'd.code as document_code', 'd.title as document_title')
+            ->leftJoinSub($files, 'fa', 'fa.version_id', '=', 'document_versions.id')
+            ->select('document_versions.*', 'd.code as document_code', 'd.title as document_title', 'fa.files_count', 'fa.files_size', 'fa.last_viewed_at', 'fa.last_downloaded_at')
             ->with('archiver')
-            ->withCount('files')
-            ->withSum('files as files_size', 'size')
-            ->withMax('files as last_viewed_at', 'last_viewed_at')
-            ->withMax('files as last_downloaded_at', 'last_downloaded_at')
             // newest access first, never-opened last; the newer version first among equals
-            ->orderByRaw('case when last_viewed_at is null and last_downloaded_at is null then 1 else 0 end')
-            ->orderByRaw("case when coalesce(last_viewed_at, '') >= coalesce(last_downloaded_at, '') then coalesce(last_viewed_at, '') else coalesce(last_downloaded_at, '') end desc")
+            ->orderByRaw('case when fa.last_viewed_at is null and fa.last_downloaded_at is null then 1 else 0 end')
+            ->orderByRaw("case when coalesce(fa.last_viewed_at, '') >= coalesce(fa.last_downloaded_at, '') then coalesce(fa.last_viewed_at, '') else coalesce(fa.last_downloaded_at, '') end desc")
             ->orderByDesc('document_versions.created_at')->orderByDesc('document_versions.id')
             ->forPage($page, $per)->get();
 
@@ -92,7 +91,7 @@ class ArchiveController extends Controller
 
         return response()->json([
             'rules' => collect(ArchiveRules::all())->map(fn (array $rule, string $kind) => $rule + ['due' => $due[$kind]->count()])->values()->all(),
-            'dueTotal' => $due['idle']->merge($due['old'])->unique('id')->count(),
+            'dueTotal' => $due['idle']->merge($due['old'])->unique()->count(),
             'lastRun' => $last === null ? null : [
                 'at' => User::stamp(Carbon::parse($last->occurred_at, 'UTC')),
                 'by' => $last->actor_username === 'system' ? 'the nightly run' : $last->actor_username,

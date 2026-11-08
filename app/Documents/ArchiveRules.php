@@ -81,48 +81,46 @@ final class ArchiveRules
     }
 
     /**
-     * The versions each ON rule would archive now: kind => versions, each version once per rule.
+     * The ids of the versions each ON rule would archive now: kind => ids, each version once per rule. The database
+     * decides (a few indexed queries), so tens of thousands of old versions cost almost nothing and nothing is loaded
+     * into memory but the ids.
      *
-     * @return array<string, Collection<int, DocumentVersion>>
+     * @return array<string, Collection<int, int>>
      */
-    public static function due(?int $limit = null): array
+    public static function due(): array
     {
         $rules = array_filter(self::all(), fn (array $rule) => $rule['enabled']);
-        $due = ['idle' => collect(), 'old' => collect()];
-        if ($rules === []) {
-            return $due;
+
+        return [
+            'idle' => isset($rules['idle']) ? self::dueIds('idle', $rules['idle']) : collect(),
+            'old' => isset($rules['old']) ? self::dueIds('old', $rules['old']) : collect(),
+        ];
+    }
+
+    /** @return Collection<int, int> */
+    private static function dueIds(string $kind, array $rule): Collection
+    {
+        $cutoff = self::before($rule)->format('Y-m-d H:i:s');   // the log and the tables keep UTC text, which sorts as time
+        $query = DB::table('document_versions as v')
+            ->join('documents as d', 'd.id', '=', 'v.document_id')
+            ->whereColumn('v.id', '!=', 'd.current_version_id')
+            ->whereNull('v.archived_at');
+
+        if ($kind === 'idle') {
+            // untouched since the cutoff: its latest view, download or restore is no later (a version never touched counts from the day it was uploaded)
+            $access = DB::table('document_files as f')->selectRaw('f.version_id, max(f.last_viewed_at) as lv, max(f.last_downloaded_at) as ld')->groupBy('f.version_id');
+            $query->leftJoinSub($access, 'a', 'a.version_id', '=', 'v.id')
+                ->where(fn ($w) => $w->whereNull('a.lv')->orWhere('a.lv', '<=', $cutoff))
+                ->where(fn ($w) => $w->whereNull('a.ld')->orWhere('a.ld', '<=', $cutoff))
+                ->where(fn ($w) => $w->whereNull('v.restored_at')->orWhere('v.restored_at', '<=', $cutoff))
+                ->where(fn ($w) => $w->whereNotNull('a.lv')->orWhereNotNull('a.ld')->orWhereNotNull('v.restored_at')->orWhere('v.created_at', '<=', $cutoff));
+        } else {
+            // replaced by a newer version at or before the cutoff, and not taken out of the archive since
+            $query->whereNull('v.restored_at')->whereExists(fn ($newer) => $newer->selectRaw('1')->from('document_versions as nv')
+                ->whereColumn('nv.document_id', 'v.document_id')->whereColumn('nv.rev_no', '>', 'v.rev_no')->where('nv.created_at', '<=', $cutoff));
         }
 
-        $candidates = DocumentVersion::query()
-            ->join('documents as d', 'd.id', '=', 'document_versions.document_id')
-            ->whereColumn('document_versions.id', '!=', 'd.current_version_id')
-            ->whereNull('document_versions.archived_at')
-            ->select('document_versions.*')
-            ->addSelect(['became_old_at' => DB::table('document_versions as nv')
-                ->whereColumn('nv.document_id', 'document_versions.document_id')
-                ->whereColumn('nv.rev_no', '>', 'document_versions.rev_no')
-                ->selectRaw('min(nv.created_at)')])
-            ->withMax('files as last_viewed_at', 'last_viewed_at')
-            ->withMax('files as last_downloaded_at', 'last_downloaded_at')
-            ->orderBy('document_versions.id')
-            ->get();
-
-        foreach ($candidates as $version) {
-            $attributes = $version->getAttributes();
-            if (isset($rules['idle'])) {
-                $touched = collect([$attributes['last_viewed_at'] ?? null, $attributes['last_downloaded_at'] ?? null, $version->restored_at?->format('Y-m-d H:i:s')])
-                    ->filter()->max() ?? $version->created_at->format('Y-m-d H:i:s');
-                if (Carbon::parse($touched, 'UTC')->lte(self::before($rules['idle']))) {
-                    $due['idle']->push($version);
-                }
-            }
-            if (isset($rules['old']) && $version->restored_at === null && ($attributes['became_old_at'] ?? null) !== null
-                && Carbon::parse($attributes['became_old_at'], 'UTC')->lte(self::before($rules['old']))) {
-                $due['old']->push($version);
-            }
-        }
-
-        return $due;
+        return $query->orderBy('v.id')->pluck('v.id')->map(fn ($id) => (int) $id);
     }
 
     /**
@@ -134,13 +132,15 @@ final class ArchiveRules
     public static function run(?User $user, string $source, int $limit = 500): array
     {
         $due = self::due();
-        $versions = $due['idle']->merge($due['old'])->unique('id')->values();
-        $byRule = fn (DocumentVersion $v) => $due['old']->contains('id', $v->id) ? 'old' : 'idle';
+        $ids = $due['idle']->merge($due['old'])->unique()->values();
 
         $archived = 0;
         $failed = [];
-        foreach ($versions->take($limit) as $version) {
-            $version->load('document');
+        foreach ($ids->take($limit) as $id) {
+            $version = DocumentVersion::with('document')->find($id);
+            if ($version === null) {
+                continue;
+            }
             try {
                 Archive::archive($version, $user, $source);
                 $archived++;
@@ -152,11 +152,11 @@ final class ArchiveRules
         }
 
         if ($archived > 0 || $failed !== [] || $user !== null) {
-            AuditLog::record($user, 'archive.run', "archived {$archived}, failed ".count($failed).', '.($versions->count() - $limit > 0 ? ($versions->count() - $limit).' left for the next run' : 'none left'),
+            AuditLog::record($user, 'archive.run', "archived {$archived}, failed ".count($failed).', '.($ids->count() - $limit > 0 ? ($ids->count() - $limit).' left for the next run' : 'none left'),
                 username: $user ? null : 'system');
         }
 
-        return ['archived' => $archived, 'failed' => $failed, 'due' => $versions->count()];
+        return ['archived' => $archived, 'failed' => $failed, 'due' => $ids->count()];
     }
 
     /** The moment a rule's period reaches back to: versions untouched since then or earlier are due. */

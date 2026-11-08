@@ -16,7 +16,7 @@ class ArchiveDue extends Command
     {
         if ($this->option('dry-run')) {
             $due = ArchiveRules::due();
-            $this->info('Due now: '.$due['idle']->merge($due['old'])->unique('id')->count().' (not opened for a while: '.$due['idle']->count().', replaced by a newer version: '.$due['old']->count().')');
+            $this->info('Due now: '.$due['idle']->merge($due['old'])->unique()->count().' (not opened for a while: '.$due['idle']->count().', replaced by a newer version: '.$due['old']->count().')');
 
             return self::SUCCESS;
         }

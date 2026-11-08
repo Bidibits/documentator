@@ -324,3 +324,13 @@ Settled calls, with the reason. Check here before changing the schema or the rul
 - A folder can look like a **folder** (the default), a **two-door cabinet**, a **filing pedestal**, a set of **drawers** or a
   **ring binder** (`folders.icon`; only those five are accepted). Chosen in "Looks like" in the New folder and Edit windows, shown in
   the folder's color in both list and grid. An icon change is a column change in Audits ("Icon").
+
+## Speed with a lot of data (9 Nov 2026)
+
+- Timed with `scripts/perf-seed.php` (10,000 documents, 30,000 versions and files, 20,000 audit rows, 60 folders) on the dev
+  server: Documents, search, folders, Expiring, Audits and the drawer each answer in about 40 to 120 ms. **Two things were slow and
+  are fixed:** the Archiving list (32 s: it worked out three sub-queries per version before sorting; now one grouped pass, about
+  0.1 to 0.4 s) and the archive rules (72 s, and they could run out of memory: they loaded every old version into PHP; now the
+  database decides and only ids are held, about 0.1 s, and the nightly run on 20,000 due versions takes a few seconds).
+- The dev server (`scripts\dev.cmd`) keeps compiled PHP and Laravel's config and routes cached inside its container; see the notes
+  at the top of that file. Odd 1 to 4 second answers on a cold worker are that server starting a process, not the app.
