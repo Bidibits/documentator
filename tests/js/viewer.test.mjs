@@ -36,7 +36,7 @@ test('it stops reading after the row limit instead of parsing a huge file', () =
   assert.ok(rows.length <= 1001, `read ${rows.length} rows`);
 });
 
-test('only PDF, pictures, text and CSV can be viewed; Office files only downloaded', () => {
-  const kinds = ['x.PDF', 'y.png', 'z.csv', 'w.docx', 'v.xlsx', 'u.pptx', 'noext', 'q.JPeG', 't.txt'].map(previewKind);
-  assert.deepEqual(kinds, ['pdf', 'image', 'csv', null, null, null, null, 'image', 'text']);
+test('PDF, pictures, text, CSV, .docx and .xlsx can be viewed; the older Office files only downloaded', () => {
+  const kinds = ['x.PDF', 'y.png', 'z.csv', 'w.docx', 'v.xlsx', 'u.pptx', 'o.doc', 'p.XLS', 'noext', 'q.JPeG', 't.txt'].map(previewKind);
+  assert.deepEqual(kinds, ['pdf', 'image', 'csv', 'docx', 'xlsx', null, null, null, null, 'image', 'text']);
 });

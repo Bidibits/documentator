@@ -5,11 +5,12 @@
 //   head.js      runs before the first paint (theme)
 //   css/*.css    the stylesheet, in file-name order
 //   js/*.js      the app, in file-name order, run as one script in one scope
+//   vendor/*.js  third-party readers (Word, Excel), copied as they are and loaded on demand by the viewer
 //
 // Output: public/build/documentator/{head,app}-<hash>.js and app-<hash>.css, and resources/app/build/index.html that
 // links them (served by AppController). No inline script, so the page can run under a strict Content-Security-Policy.
 import { createHash } from 'node:crypto';
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -37,6 +38,8 @@ rmSync(assets, { recursive: true, force: true });
 mkdirSync(assets, { recursive: true });
 mkdirSync(out, { recursive: true });
 for (const [name, text] of Object.entries(files)) writeFileSync(join(assets, name), text);
+mkdirSync(join(assets, 'vendor'));
+for (const name of readdirSync(join(src, 'vendor')).filter(f => f.endsWith('.js'))) copyFileSync(join(src, 'vendor', name), join(assets, 'vendor', name));
 
 const [headJs, appCss, appJs] = Object.keys(files).map(name => `/build/documentator/${name}`);
 const html = page

@@ -44,11 +44,15 @@ Settled calls, with the reason. Check here before changing the schema or the rul
   `<iframe>` on a `blob:` address, so the page's policy allows `frame-src blob:` and `object-src blob:` and nothing more),
   a picture, plain text (first 1 MB) or a CSV as a table (first 1000 rows). The file is fetched with the app header, so it
   needs a sign-in, and the server audits it as `file.viewed` (a download is `file.downloaded`).
-- **Word, Excel and PowerPoint cannot be viewed in the app yet**, only downloaded: browsers cannot draw them. Options if
-  wanted: convert in the browser with a bundled library (mammoth for docx, SheetJS for xlsx; both would be vendored into the
-  repo, since the page loads no outside scripts), or an editor/viewer service (OnlyOffice, Collabora, Microsoft 365).
-  Editing in the browser means the service option and is a later decision; for now the way to change a file is download,
-  edit, upload as a new version.
+- **Word (.docx) and Excel (.xlsx) viewing (8 Nov 2026):** a plain preview, converted in the browser by two vendored
+  libraries in `resources/app/vendor/` (mammoth 1.13.0 for Word, BSD-2; read-excel-file 5.8.5 for Excel, MIT; licences
+  beside them). The build copies them to `public/build/documentator/vendor/`, and the viewer loads one only the first time
+  such a file is opened (same-origin script, so the policy is unchanged). Word is read as a document and only plain tags are
+  copied into the page (no links, styles, scripts; pictures only as data), never inserted as markup. Excel shows sheet tabs
+  and the first 1000 rows, formulas as their last saved value. Fonts, headers, page layout, formatting and charts are not
+  shown, and the page says so. **Still download-only:** the old .doc and .xls, and PowerPoint (.ppt, .pptx). An exact view
+  or editing in the browser means an editor service (OnlyOffice, Collabora, Microsoft 365), a later decision; for now the
+  way to change a file is download, edit, upload as a new version.
 - Until roles exist, every signed-in person can register, read and download. Permissions come with the roles step.
 - Not built yet: uploading a new version (Rev 1...) with a change note, restoring a version, the duplicate-file warning,
   a per-document audit timeline.

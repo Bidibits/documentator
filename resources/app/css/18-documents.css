@@ -46,3 +46,19 @@
 .d-sub .tag{font-size:12px}
 .kv dd.pre{white-space:pre-wrap}
 .drawer .empty-mini{padding:6px 0 14px}
+
+/* Word and Excel previews */
+.viewer-docwrap{overflow:auto; flex:1; min-height:0}
+.viewer-doc{max-width:760px; margin:18px auto; padding:28px 36px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r); line-height:1.6; overflow-wrap:anywhere}
+.viewer-doc h1,.viewer-doc h2,.viewer-doc h3,.viewer-doc h4{line-height:1.25; margin:1.1em 0 .4em}
+.viewer-doc p{margin:0 0 .8em}
+.viewer-doc ul,.viewer-doc ol{margin:0 0 .8em; padding-left:1.6em}
+.viewer-doc table{border-collapse:collapse; margin:0 0 1em; max-width:100%}
+.viewer-doc td,.viewer-doc th{border:1px solid var(--line); padding:5px 9px; vertical-align:top}
+.viewer-doc img{max-width:100%; height:auto}
+.viewer-sheet{display:flex; flex-direction:column; flex:1; min-height:0}
+.viewer-sheet-body{flex:1; min-height:0; overflow:auto; display:flex; flex-direction:column}
+.viewer-sheet-body .viewer-csv{flex:1}
+.viewer-tabs{display:flex; gap:4px; padding:8px 12px 0; border-bottom:1px solid var(--line); overflow-x:auto; flex:none}
+.viewer-tab{border:1px solid var(--line); border-bottom:0; background:var(--surface-2); color:var(--ink-3); padding:6px 14px; border-radius:var(--r) var(--r) 0 0; font:inherit; font-size:12.5px; cursor:pointer; white-space:nowrap}
+.viewer-tab.on{background:var(--surface); color:var(--ink); font-weight:600}
