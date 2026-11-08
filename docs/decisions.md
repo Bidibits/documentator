@@ -67,3 +67,27 @@ Settled calls, with the reason. Check here before changing the schema or the rul
 
 - `audit_logs` is append-only; on SQLite triggers refuse UPDATE and DELETE. Sign-in, failed sign-in, sign-out, user creation,
   document registration, new versions and file views and downloads are recorded.
+
+## Saving space and archiving (8 Nov 2026, asked for by the user, not built yet)
+
+- **Zipping saves little on most files.** PDF, Word, Excel, PowerPoint, PNG and JPG are already compressed inside, so zipping
+  them saves about 0-5%; only text and CSV shrink a lot. **The user's note:** zipping the files of old versions, which are
+  rarely opened, would probably still be best, accepting that viewing, downloading and retrieving them is slower, for the
+  disk space. (Kept as the user's call; the cheaper wins are sharing one stored copy of byte-identical files across versions,
+  using the SHA-256 already kept, and compressing at disk level. Neither was chosen yet.)
+- **Last viewed and last downloaded.** Each file shows when it was last viewed and last downloaded, and by whom, as small text
+  beside its View and Download buttons, and the documents table shows the latest of each. "Accessed" means viewed or
+  downloaded. This is also what the archive rules read.
+- **Audit like KVNsys** (read from `Desktop/KVNsys/Phoenix`: `KVNsysCore/shared/audit-trail.ts`, `audits/audit-log-book.ts`,
+  `docs/schema.md`): one row **per changed column** (table, record, column, value before, value after, Created / Updated /
+  Decommissioned, Manual / Automatic, who, where, when), written **in the same transaction as the save** so a change is never
+  kept without its record and a refused save leaves none; secret columns (password hash) logged as "(hidden)"; an unchanged
+  value (null vs empty) is not a change; the rows are append-only and the database refuses to change them. Today's
+  `audit_logs` is one line of text per event; it stays for sign-ins and file access, and a column-level table is added beside
+  it for changes to documents, versions, files, users and archive rules.
+- **Panels:** Users, Documents, Archiving and Audits along the top.
+- **Archiving screen:** a table sorted with the most recently accessed first, a checkbox per version and a "select all", an
+  "Archive selected" button (the manual way), and a way to take a version back out of the archive. **A current version can
+  never be archived.** Rules, set on the same screen: archive a version automatically when it has not been accessed for X
+  days / months / years, and/or when it is an old (not current) version.
+- **Documents page:** each version shows whether it is archived.
