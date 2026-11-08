@@ -57,9 +57,9 @@ class User extends Authenticatable
      *
      * @return array<string, mixed>
      */
-    public function view(): array
+    public function view(bool $withAccess = false): array
     {
-        return [
+        $view = [
             'id' => $this->id,
             'username' => $this->username,
             'name' => $this->name,
@@ -68,10 +68,16 @@ class User extends Authenticatable
             'lastLogin' => self::stamp($this->last_login_at),
             'role' => $this->role,
             'roleLabel' => Access::label((string) $this->role),
-            'permissions' => Access::permissions((string) $this->role),
             'mustChangePassword' => (bool) $this->must_change_password,
             'createdAt' => self::stamp($this->created_at),
         ];
+
+        // what this person may do somewhere (only for the signed-in person: the screen uses it to show or hide)
+        if ($withAccess) {
+            $view['permissions'] = Access::permissions($this);
+        }
+
+        return $view;
     }
 
     /**

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Auth\Access;
+use App\Auth\Grants;
 use App\Auth\SessionUser;
 use App\Documents\CodeSuggestion;
 use App\Exceptions\ApiError;
@@ -31,15 +33,21 @@ class DocumentController extends Controller
     private const LOGGED_DOCUMENT_COLUMNS = ['code', 'title', 'doc_type', 'department_id', 'description', 'location_note', 'current_version_id', 'created_by', 'updated_by'];
 
     /** The register: newest first, plus the departments to choose from and the types already in use (the form offers them). */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $documents = Document::withAccessDates()->with(['currentVersion.files', 'creator', 'department'])->orderByDesc('id')->get();
+        $grants = Access::grants(SessionUser::resolve($request));
+        $query = Document::withAccessDates()->with(['currentVersion.files', 'creator', 'department']);
+        $grants->scope($query, 'documents.department_id', Access::TAGS['view']);   // only the departments this person may see
+        $documents = $query->orderByDesc('id')->get();
 
         return response()->json([
-            'documents' => $documents->map->view()->all(),
-            // the departments a new document may be given (switched-off ones are not offered)
-            'departments' => Department::query()->where('active', true)->orderBy('name')->get(['id', 'name'])->map(fn ($d) => ['id' => $d->id, 'name' => $d->name])->all(),
-            'types' => $this->distinct('doc_type'),
+            'documents' => $documents->map(fn (Document $d) => $d->view(false, $grants))->all(),
+            // the departments this person may register a document in (switched-off ones are not offered)
+            'departments' => Department::query()->where('active', true)->orderBy('name')->get(['id', 'name'])
+                ->filter(fn ($d) => $grants->can(Access::TAGS['register'], $d->id))
+                ->map(fn ($d) => ['id' => $d->id, 'name' => $d->name])->values()->all(),
+            'canRegisterNone' => $grants->can(Access::TAGS['register'], null),
+            'types' => $this->distinct('doc_type', $grants),
         ]);
     }
 
@@ -48,11 +56,15 @@ class DocumentController extends Controller
         return response()->json(['code' => CodeSuggestion::next()]);
     }
 
-    public function show(Document $document): JsonResponse
+    public function show(Request $request, Document $document): JsonResponse
     {
+        $grants = Access::grants(SessionUser::resolve($request));
+        if (! $grants->can(Access::TAGS['view'], $document->department_id)) {
+            throw ApiError::forbidden();
+        }
         $document->load(Document::DETAIL);
 
-        return response()->json(['document' => $document->view(true)]);
+        return response()->json(['document' => $document->view(true, $grants)]);
     }
 
     /**
@@ -73,6 +85,10 @@ class DocumentController extends Controller
         ] + $this->fileRules());
 
         $user = SessionUser::resolve($request);
+        $grants = Access::grants($user);
+        if (! $grants->can(Access::TAGS['register'], $data['department_id'] ?? null)) {
+            throw ApiError::forbidden();   // not a department (or "no department") this person may register in
+        }
         $stored = [];
 
         try {
@@ -120,7 +136,7 @@ class DocumentController extends Controller
 
         $document->load(Document::DETAIL);
 
-        return response()->json(['document' => $document->view(true)], 201);
+        return response()->json(['document' => $document->view(true, $grants)], 201);
     }
 
     /**
@@ -129,11 +145,16 @@ class DocumentController extends Controller
      */
     public function storeVersion(Request $request, Document $document): JsonResponse
     {
+        $user = SessionUser::resolve($request);
+        $grants = Access::grants($user);
+        if (! $grants->can(Access::TAGS['update'], $document->department_id)) {
+            throw ApiError::forbidden();
+        }
+
         $data = $request->validate([
             'change_note' => ['nullable', 'string', 'max:500'],
         ] + $this->fileRules());
 
-        $user = SessionUser::resolve($request);
         $stored = [];
 
         try {
@@ -171,7 +192,7 @@ class DocumentController extends Controller
 
         $document->load(Document::DETAIL);
 
-        return response()->json(['document' => $document->view(true)], 201);
+        return response()->json(['document' => $document->view(true, $grants)], 201);
     }
 
     /** @return array<string, array<int, mixed>> the rules for the files of a registration or a new version */
@@ -252,9 +273,11 @@ class DocumentController extends Controller
     }
 
     /** @return list<string> */
-    private function distinct(string $column): array
+    private function distinct(string $column, Grants $grants): array
     {
-        return Document::query()->whereNotNull($column)->where($column, '!=', '')
-            ->distinct()->orderBy($column)->pluck($column)->all();
+        $query = Document::query()->whereNotNull($column)->where($column, '!=', '');
+        $grants->scope($query, 'documents.department_id', Access::TAGS['view']);
+
+        return $query->distinct()->orderBy($column)->pluck($column)->all();
     }
 }

@@ -5,6 +5,7 @@ async function openDetail(id){
   catch(e){ if(e.status !== 401) toast(errorWords(e), "warn"); return; }
 
   const current = doc.versions[0];
+  const canDownload = !doc.can || doc.can.download;   // the server decides; this only hides the buttons
   $("#d-title").textContent = doc.title;
   // (replaceChildren turns a null into the text "null", so only real elements go in)
   $("#d-sub").replaceChildren(...[
@@ -26,9 +27,9 @@ async function openDetail(id){
 
   $("#d-body").replaceChildren(
     section("Details", details.children.length ? details : h("p", {class: "empty-mini"}, "No details were entered.")),
-    section("Files in the current version (Ver " + doc.rev + ")", fileList(current.files),
-      can("documentator.version.create") ? h("button", {class: "btn sm", type: "button", onclick: () => openNewVersion(doc)}, icon("upload"), "Upload new version") : null),
-    section("Versions", timeline(doc.versions, current.id)));
+    section("Files in the current version (Ver " + doc.rev + ")", fileList(current.files, canDownload),
+      doc.can && doc.can.update ? h("button", {class: "btn sm", type: "button", onclick: () => openNewVersion(doc)}, icon("upload"), "Upload new version") : null),
+    section("Versions", timeline(doc.versions, current.id, canDownload)));
 
   openDrawer();
   $("#d-body").scrollTop = 0;
@@ -57,14 +58,14 @@ function noteAccess(file, kind){
   loadDocuments();   // the table's last viewed / downloaded columns
 }
 
-function fileList(files){
+function fileList(files, canDownload = true){
   return h("div", {class: "files"}, files.map(file => h("div", {class: "file-row"},
     h("span", {class: "fi"}, icon("docs")),
     h("div", {class: "fb"}, h("div", {class: "fn"}, file.name), h("div", {class: "fs"}, fmtSize(file.size)),
       (() => { const line = h("div", {class: "fs access"}, accessLines(file)); accessText.set(file.id, line); return line; })()),
-    h("div", {class: "file-acts"},
+    canDownload ? h("div", {class: "file-acts"},
       previewKind(file.name) ? h("button", {class: "btn sm", type: "button", onclick: () => openViewer(file)}, icon("eye"), "View") : null,
-      h("button", {class: "btn sm", type: "button", onclick: event => downloadClicked(event.currentTarget, file)}, icon("download"), "Download")))));
+      h("button", {class: "btn sm", type: "button", onclick: event => downloadClicked(event.currentTarget, file)}, icon("download"), "Download")) : h("div", {class: "file-acts muted-cell", title: "Your role may see this document but not open its files"}, "No access to the file"))));
 }
 
 async function downloadClicked(button, file){
@@ -74,7 +75,7 @@ async function downloadClicked(button, file){
 }
 
 // every version, newest first; an older version lists its files here with View and Download (the current one is above)
-function timeline(versions, currentId){
+function timeline(versions, currentId, canDownload){
   return h("div", {class: "tl"}, versions.map(v => h("div", {class: "tl-item"},
     h("span", {class: "tl-dot"}),
     h("div", {class: "tl-top"}, h("strong", {}, "Ver " + v.rev),
@@ -83,5 +84,5 @@ function timeline(versions, currentId){
     h("div", {class: "tl-sub"}, (v.rev === 0 ? "Registered by " : "Uploaded by ") + (v.createdBy || "unknown") + ", " + plural(v.files.length, "file")),
     v.changeNote ? h("div", {class: "tl-note"}, v.changeNote) : null,
     v.archived ? h("div", {class: "tl-sub"}, "Archived " + fmtStamp(v.archivedAt) + (v.archivedBy ? " by " + v.archivedBy : "") + ", packed into " + fmtSize(v.archiveSize) + ". Its files open and download more slowly.") : null,
-    v.id === currentId ? h("div", {class: "tl-sub"}, "Current version, files above") : h("div", {class: "tl-files"}, fileList(v.files)))));
+    v.id === currentId ? h("div", {class: "tl-sub"}, "Current version, files above") : h("div", {class: "tl-files"}, fileList(v.files, canDownload)))));
 }

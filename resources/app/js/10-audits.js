@@ -81,7 +81,7 @@ function renderAudits(){
           }}, e.record)
         : h("span", {class: "muted-cell"}, "(gone) " + e.recordId)),
       h("td", {class: "nowrap"}, e.columnLabel),
-      h("td", {}, h("span", {class: "pill " + (e.change === "Created" ? "p-ok" : "p-accent")}, e.change)),
+      h("td", {}, h("span", {class: "pill " + (e.change === "Created" ? "p-ok" : e.change === "Deleted" ? "p-over" : "p-accent")}, e.change)),
       h("td", {class: "nowrap"}, e.source),
       value(e.before), value(e.after),
       h("td", {class: "nowrap mono-sm"}, same ? "" : e.where));

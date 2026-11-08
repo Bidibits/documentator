@@ -1,8 +1,8 @@
 /* ---------- the side bar: panels, and a rail that folds in and out ---------- */
-const PAGES = ["documents", "users", "departments", "archiving", "audits"];
+const PAGES = ["documents", "users", "roles", "departments", "archiving", "audits"];
 // what each panel needs (the server refuses it otherwise; this decides what is shown)
-const PAGE_RIGHTS = {documents: "documentator.document.view", users: "documentator.user.manage", departments: "documentator.department.manage", archiving: "documentator.archive.manage", audits: "documentator.audit.view"};
-const PAGE_TITLES = {documents: "Documents", users: "Users", departments: "Departments", archiving: "Archiving", audits: "Audits"};
+const PAGE_RIGHTS = {documents: "documentator.document.view", users: "documentator.user.manage", roles: "documentator.role.manage", departments: "documentator.department.manage", archiving: "documentator.version.archive", audits: "documentator.audit.view"};
+const PAGE_TITLES = {documents: "Documents", users: "Users", roles: "Roles", departments: "Departments", archiving: "Archiving", audits: "Audits"};
 
 function pageFromHash(){
   const name = location.hash.replace(/^#/, "");
@@ -26,6 +26,7 @@ function showPage(name){
   if(name === "archiving") loadArchive();
   if(name === "users") loadUsers();
   if(name === "departments") loadDepartments();
+  if(name === "roles") loadRoles();
 }
 
 // the wide screen's side bar folds to icons and back; the choice is kept in this browser

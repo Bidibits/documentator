@@ -15,7 +15,9 @@ function clearArchive(){
 }
 
 async function loadArchive(){
-  loadRules();
+  // the rules work on every department at once, so only an administrator sees them
+  $("#arch-rules").hidden = !can("documentator.archive.manage");
+  if(can("documentator.archive.manage")) loadRules();
   try{
     const data = await api("GET", "/api/archive");
     arch.rows = data.versions || [];

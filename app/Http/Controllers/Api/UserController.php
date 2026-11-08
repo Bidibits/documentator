@@ -25,7 +25,7 @@ class UserController extends Controller
     {
         return response()->json([
             'users' => User::query()->orderBy('name')->get()->map->view()->all(),
-            'roles' => collect(Access::roles())->map(fn (array $role, string $key) => ['key' => $key, 'label' => $role['label'], 'description' => $role['description']])->values()->all(),
+            'roles' => collect(Access::roles())->map(fn (array $role) => ['key' => $role['key'], 'label' => $role['label'], 'description' => $role['description']])->values()->all(),
         ]);
     }
 

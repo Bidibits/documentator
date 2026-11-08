@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Auth\Access;
 use App\Auth\SessionUser;
 use App\Documents\Archive;
 use App\Exceptions\ApiError;
@@ -21,6 +22,11 @@ class FileController extends Controller
      */
     public function download(Request $request, DocumentFile $file): StreamedResponse
     {
+        $user = SessionUser::resolve($request);
+        if (! Access::grants($user)->can(Access::TAGS['download'], $file->version->document->department_id)) {
+            throw ApiError::forbidden();   // checked first: a person who may not open it learns nothing about its storage
+        }
+
         $disk = Storage::disk('local');
         $archived = $file->version->isArchived();
         // an archived version's files are read out of its zip (slower); the others from where they were stored
@@ -29,7 +35,6 @@ class FileController extends Controller
         }
 
         $document = $file->version->document;
-        $user = SessionUser::resolve($request);
         $viewing = $request->boolean('view');
         AuditLog::record(
             $user,

@@ -149,7 +149,8 @@ Settled calls, with the reason. Check here before changing the schema or the rul
 
 ## Users and roles (8 Nov 2026)
 
-- **Roles are bundles of namespaced permissions**, the names OneHub will use (`documentator.document.view`, `.file.download`,
+- **(Superseded the same day by "Roles per department" below: the three roles are now records and the bundles are per department.)**
+  **Roles are bundles of namespaced permissions**, the names OneHub will use (`documentator.document.view`, `.file.download`,
   `.document.create`, `.version.create`, `.archive.manage`, `.audit.view`, `.user.manage`). Three roles, in
   `config/documentator.php`: **Viewer** (view documents, view and download files), **Editor** (also register documents and
   upload new versions), **Administrator** (also archive and its rules, read Audits, manage users). `AppAuthAccess` answers
@@ -189,7 +190,40 @@ Settled calls, with the reason. Check here before changing the schema or the rul
   already typed on a document (ignoring case and surrounding spaces, first spelling wins, non-ASCII included) into a
   department and pointed its documents at it, blank ones became "no department"; rolling back restores the text. Rehearsed on
   messy data before running. Audit rows written before this keep the old column name `department` (shown as "Department").
-- **Next, not built:** departments as a dimension of roles. The user's wish: a role carries, per department, tags such as
+- **(Built the same day, see "Roles per department" below.)** Departments as a dimension of roles. The user's wish: a role carries, per department, tags such as
   view / download / update / archive / delete, so a department's documents can only be reached by someone whose role holds
   the matching tag for that department. Open questions for that step are in the conversation (what "delete" is, documents with
   no department, one role per person or several, and what stays global such as Users and Audits).
+
+## Roles per department (8 Nov 2026, the user's call after a simpler option was offered)
+
+- **Roles are records** (Administration > Roles, right `documentator.role.manage`): a name, a description and a **grid**: a row
+  per department (switched-off ones marked) plus **"No department"** (documents with no department), a column per tag, and a
+  checkbox for each. A person has **one role** (chosen on the Users screen); someone in two departments gets a role that
+  ticks both. Roles can be made, renamed, described and deleted (only when nobody has them). Role keys never change, so a
+  rename loses no one their role.
+- **The tags** (namespaced, shown as the grid's columns): **View** `documentator.document.view` (see the document, its details,
+  versions and file names), **Download** `documentator.file.download` (open and download its files), **Register**
+  `documentator.document.create` (register documents in that department), **Update** `documentator.version.create` (upload
+  new versions), **Archive** `documentator.version.archive` (archive and take out its old versions), **Delete**
+  `documentator.document.delete` (**reserved**: shown greyed, does nothing, there is no delete yet). Ticking anything brings
+  **View** with it (the screen does it and the server insists on it); unticking View clears the row.
+- **The server decides, per document.** Each route needs the tag *somewhere* (403 `forbidden` otherwise, before any record is
+  looked up), then the controller checks the **document's own department**: the Documents list and the types offered are
+  filtered to what the person may view; opening a document, downloading or viewing a file, registering (in that department
+  only; "no department" only if ticked), uploading a version, and archiving or restoring a version each check their tag for
+  that department (403 otherwise). A document says what the signed-in person may do with it (`can.download / update /
+  archive`) so the screen shows or hides buttons; the Archiving panel lists only versions the person may archive.
+- **Stays the Administrator's alone, whatever a role ticks:** Users, Roles, Departments, Audits, and the archive rules and "run
+  now" (they work on every department at once). The **Administrator** role is the one fixed system role (key `admin`): everything
+  in every department, **including departments made later**, never edited or deleted, so someone can always sign in and fix the
+  others. An administrator still cannot switch off or demote their own account.
+- **A new department starts with nothing ticked** in every role, so nobody but an administrator reaches its documents until it is
+  granted. The migration carried the old Viewer and Editor roles over with their old rights (Viewer: view and download; Editor:
+  also register and update) for the departments that existed **and for documents with no department**; existing accounts keep
+  their role.
+- **Audited:** each role is a record in Audits (table "Roles"); the grid is logged as one value, "HR: view, download; No
+  department: view" (the way KVNsys logs rights), before and after each save; a deleted role is logged as "Deleted" with what
+  it held. `role.created / updated / deleted` are in the activity log.
+- **Not built:** per-person extra departments on top of a role, several roles per person, a delete feature, editing roles'
+  global abilities (they are the Administrator's), and OneHub linking.

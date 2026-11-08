@@ -55,6 +55,6 @@ class PasswordController extends Controller
         });
         SessionUser::endAllFor($user, $request->session()->getId());
 
-        return response()->json(['user' => $user->fresh()->view()]);
+        return response()->json(['user' => $user->fresh()->view(true)]);
     }
 }

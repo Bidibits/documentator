@@ -46,28 +46,7 @@ return [
         ],
     ],
 
-    // Roles are bundles of namespaced permissions (the names OneHub will use). A new account chooses one; an administrator
-    // can change it. Editing the bundles themselves from the screen is a later decision.
-    'roles' => [
-        'viewer' => [
-            'label' => 'Viewer',
-            'description' => 'Finds and reads documents, and views and downloads their files.',
-            'permissions' => ['documentator.document.view', 'documentator.file.download'],
-        ],
-        'editor' => [
-            'label' => 'Editor',
-            'description' => 'Everything a viewer can, and registers documents and uploads new versions.',
-            'permissions' => ['documentator.document.view', 'documentator.file.download', 'documentator.document.create', 'documentator.version.create'],
-        ],
-        'admin' => [
-            'label' => 'Administrator',
-            'description' => 'Everything an editor can, and archives, reads the audit log, and manages accounts and departments.',
-            'permissions' => [
-                'documentator.document.view', 'documentator.file.download', 'documentator.document.create', 'documentator.version.create',
-                'documentator.archive.manage', 'documentator.audit.view', 'documentator.user.manage', 'documentator.department.manage',
-            ],
-        ],
-    ],
+    // (Roles and what each may do in each department are records, kept in Administration > Roles.)
 
     'session_max_days' => (int) env('DOCUMENTATOR_SESSION_MAX_DAYS', 7),
 

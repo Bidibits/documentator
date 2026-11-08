@@ -21,7 +21,7 @@ class SessionController extends Controller
      */
     public function show(Request $request): JsonResponse
     {
-        return response()->json(['user' => SessionUser::resolve($request)?->view()]);
+        return response()->json(['user' => SessionUser::resolve($request)?->view(true)]);
     }
 
     public function login(Request $request): JsonResponse
@@ -51,7 +51,7 @@ class SessionController extends Controller
         $user->forceFill(['last_login_at' => now()])->save();
         AuditLog::record($user, 'sign-in');
 
-        return response()->json(['user' => $user->view()]);
+        return response()->json(['user' => $user->view(true)]);
     }
 
     public function logout(Request $request): JsonResponse

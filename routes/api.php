@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\FileController;
 use App\Http\Controllers\Api\PasswordController;
+use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SessionController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
@@ -43,13 +44,25 @@ Route::middleware('documentator.signed-in')->group(function () {
 
     Route::get('audits', [AuditController::class, 'index'])->middleware('documentator.can:documentator.audit.view');
 
-    Route::middleware('documentator.can:documentator.archive.manage')->group(function () {
+    // archiving a department's versions: needs the archive tag in some department (the controller checks which)
+    Route::middleware('documentator.can:documentator.version.archive')->group(function () {
         Route::get('archive', [ArchiveController::class, 'index']);
+        Route::post('versions/{version}/archive', [ArchiveController::class, 'archive'])->whereNumber('version');
+        Route::post('versions/{version}/restore', [ArchiveController::class, 'restore'])->whereNumber('version');
+    });
+
+    // the archive rules work on every department at once: the Administrator's alone
+    Route::middleware('documentator.can:documentator.archive.manage')->group(function () {
         Route::get('archive/rules', [ArchiveController::class, 'rules']);
         Route::put('archive/rules/{kind}', [ArchiveController::class, 'saveRule'])->whereIn('kind', ['idle', 'old']);
         Route::post('archive/run', [ArchiveController::class, 'run']);
-        Route::post('versions/{version}/archive', [ArchiveController::class, 'archive'])->whereNumber('version');
-        Route::post('versions/{version}/restore', [ArchiveController::class, 'restore'])->whereNumber('version');
+    });
+
+    Route::middleware('documentator.can:documentator.role.manage')->group(function () {
+        Route::get('roles', [RoleController::class, 'index']);
+        Route::post('roles', [RoleController::class, 'store']);
+        Route::patch('roles/{role}', [RoleController::class, 'update'])->whereNumber('role');
+        Route::delete('roles/{role}', [RoleController::class, 'destroy'])->whereNumber('role');
     });
 
     Route::middleware('documentator.can:documentator.department.manage')->group(function () {

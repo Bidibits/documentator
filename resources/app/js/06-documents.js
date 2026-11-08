@@ -1,5 +1,5 @@
 /* ---------- the documents list ---------- */
-const docs = {all: [], departments: [], types: [], query: "", loaded: false};
+const docs = {all: [], departments: [], canRegisterNone: false, types: [], query: "", loaded: false};
 
 // offered in the Type box besides the types already in use (a plain list for now; an admin-kept list can come later)
 const DEFAULT_TYPES = ["Contract", "MOA", "Permit / License", "Form", "Template", "Policy", "Memorandum",
@@ -15,6 +15,7 @@ async function loadDocuments(){
     const data = await api("GET", "/api/documents");
     docs.all = data.documents || [];
     docs.departments = data.departments || [];
+    docs.canRegisterNone = !!data.canRegisterNone;
     docs.types = data.types || [];
     docs.loaded = true;
     fillSuggestionLists();
@@ -27,7 +28,7 @@ async function loadDocuments(){
 }
 
 function clearDocuments(){
-  docs.all = []; docs.departments = []; docs.types = []; docs.query = ""; docs.loaded = false;
+  docs.all = []; docs.departments = []; docs.canRegisterNone = false; docs.types = []; docs.query = ""; docs.loaded = false;
   fillSuggestionLists();
   $("#doc-q").value = "";
   $("#doc-table").replaceChildren();

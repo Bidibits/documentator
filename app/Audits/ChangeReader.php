@@ -24,11 +24,13 @@ final class ChangeReader
         'users' => 'Users',
         'archive_rules' => 'Archive rules',
         'departments' => 'Departments',
+        'roles' => 'Roles',
     ];
 
     /** What the screens call a column, where its database name does not say it the same way. */
     private const COLUMNS = [
         'doc_type' => 'Type',
+        'grants' => 'Access',
         'department_id' => 'Department',
         'location_note' => 'Physical location',
         'current_version_id' => 'Current version',
@@ -184,6 +186,7 @@ final class ChangeReader
 
         $departments = DB::table('departments')->whereIn('id', array_unique(array_merge($ids('departments'), $refs('department_id'))))->pluck('name', 'id')
             ->mapWithKeys(fn ($name, $id) => [(string) $id => $name])->all();
+        $roleNames = DB::table('roles')->whereIn('id', $ids('roles'))->pluck('name', 'id')->mapWithKeys(fn ($name, $id) => [(string) $id => $name])->all();
         $ruleIds = $ids('archive_rules');
         $rules = $ruleIds ? DB::table('archive_rules')->whereIn('id', $ruleIds)->pluck('kind', 'id')
             ->mapWithKeys(fn ($kind, $id) => [(string) $id => $kind === 'idle' ? 'Not opened for a while' : 'Replaced by a newer version'])->all() : [];
@@ -200,6 +203,7 @@ final class ChangeReader
                 'users' => $users,
                 'archive_rules' => $rules,
                 'departments' => $departments,
+                'roles' => $roleNames,
             ],
             'users' => $users,
             'rules' => $rules,

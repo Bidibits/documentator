@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Auth\Access;
 use App\Auth\SessionUser;
 use App\Documents\Archive;
 use App\Documents\ArchiveRules;
+use App\Exceptions\ApiError;
 use App\Http\Controllers\Controller;
 use App\Models\DocumentVersion;
 use App\Models\User;
@@ -21,9 +23,10 @@ class ArchiveController extends Controller
      * never-opened last. One version per row: its document, how many files and how big, when it was last viewed or
      * downloaded, and whether it is archived.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $versions = DocumentVersion::query()
+        $grants = Access::grants($this->user($request));
+        $query = DocumentVersion::query()
             ->join('documents as d', 'd.id', '=', 'document_versions.document_id')
             ->whereColumn('document_versions.id', '!=', 'd.current_version_id')
             ->select('document_versions.*', 'd.code as document_code', 'd.title as document_title')
@@ -31,8 +34,9 @@ class ArchiveController extends Controller
             ->withCount('files')
             ->withSum('files as files_size', 'size')
             ->withMax('files as last_viewed_at', 'last_viewed_at')
-            ->withMax('files as last_downloaded_at', 'last_downloaded_at')
-            ->get();
+            ->withMax('files as last_downloaded_at', 'last_downloaded_at');
+        $grants->scope($query, 'd.department_id', Access::TAGS['archive']);   // only the departments this person may archive in
+        $versions = $query->get();
 
         $rows = $versions->map(fn (DocumentVersion $v) => $this->row($v))->sort(function (array $a, array $b) {
             // newest access first, never-opened last; the newer version first among equals
@@ -91,6 +95,7 @@ class ArchiveController extends Controller
 
     public function archive(Request $request, DocumentVersion $version): JsonResponse
     {
+        $this->mayArchive($request, $version);
         Archive::archive($version, $this->user($request));
 
         return response()->json(['version' => $this->one($version->id)]);
@@ -98,9 +103,18 @@ class ArchiveController extends Controller
 
     public function restore(Request $request, DocumentVersion $version): JsonResponse
     {
+        $this->mayArchive($request, $version);
         Archive::restore($version, $this->user($request));
 
         return response()->json(['version' => $this->one($version->id)]);
+    }
+
+    /** The person must be allowed to archive in this document's department. */
+    private function mayArchive(Request $request, DocumentVersion $version): void
+    {
+        if (! Access::grants($this->user($request))->can(Access::TAGS['archive'], $version->document->department_id)) {
+            throw ApiError::forbidden();
+        }
     }
 
     private function user(Request $request): User

@@ -125,3 +125,22 @@
 /* the Departments panel */
 .dep-table{min-width:520px}
 .dep-table tbody tr{cursor:default}
+
+/* the Roles panel and its grid */
+.rol-table{min-width:760px}
+.rol-table tbody tr{cursor:default}
+.rol-sum{max-width:420px; color:var(--ink-2); font-size:13px}
+.modal.wide{width:min(860px, calc(100% - 32px))}
+.matrix{border-collapse:separate; border-spacing:0; width:100%}
+.matrix th,.matrix td{padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:middle}
+.matrix thead th{background:var(--surface-2); font-size:12px; font-weight:600; color:var(--ink-3); text-align:center; white-space:nowrap}
+.matrix th.mx-dept{text-align:left; font-weight:600; color:var(--ink); min-width:170px}
+.matrix thead th.mx-dept{color:var(--ink-3)}
+.matrix .mx-c{text-align:center}
+.matrix .mx-t{margin-bottom:4px}
+.matrix input[type=checkbox]{width:16px; height:16px; accent-color:var(--accent); cursor:pointer}
+.matrix input[type=checkbox]:disabled{cursor:not-allowed}
+.matrix .mx-off{opacity:.45}
+.matrix .mx-inactive th.mx-dept{color:var(--ink-3)}
+.matrix .sub{font-size:12px; font-weight:450; color:var(--ink-3)}
+.matrix tbody tr:last-child th,.matrix tbody tr:last-child td{border-bottom:0}

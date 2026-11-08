@@ -28,7 +28,7 @@ async function openUpload(){
   const title = h("input", {id: "fld-title", name: "title", type: "text", maxlength: "200", autocomplete: "off"});
   const type = h("input", {id: "fld-doc_type", name: "doc_type", type: "text", maxlength: "64", list: "dl-types", autocomplete: "off", placeholder: "Choose from the list or type your own"});
   const department = h("select", {id: "fld-department_id", name: "department_id"},
-    h("option", {value: ""}, "No department"), docs.departments.map(d => h("option", {value: String(d.id)}, d.name)));
+    h("option", {value: ""}, docs.canRegisterNone ? "No department" : "Choose a department"), docs.departments.map(d => h("option", {value: String(d.id)}, d.name)));
   const issued = h("input", {id: "fld-issued_on", name: "issued_on", type: "date", value: todayISO()});
   const expires = h("input", {id: "fld-expires_on", name: "expires_on", type: "date"});
   const location = h("input", {id: "fld-location_note", name: "location_note", type: "text", maxlength: "200", autocomplete: "off"});
@@ -60,7 +60,7 @@ async function openUpload(){
     formField("title", "Title", title, "Filled in from the first file's name; change it if you like.", true),
     h("div", {class: "grid2"},
       formField("doc_type", "Type", type, "Pick one from the list, or type a new kind."),
-      formField("department_id", "Department", department, docs.departments.length ? "Which department this belongs to." : "No departments yet. An administrator adds them under Administration, Departments.")),
+      formField("department_id", "Department", department, docs.departments.length ? "Which department this belongs to. You can only register in the departments your role allows." : docs.canRegisterNone ? "No departments to choose from yet." : "Your role cannot register a document in any department.")),
     h("div", {class: "grid2"},
       formField("issued_on", "Issued on", issued),
       formField("expires_on", "Expires on", expires, "Leave empty if it does not expire.")),
@@ -72,6 +72,7 @@ async function openUpload(){
     const codeText = code.value.trim();
     if(!codeText) return fail("Enter a code for this document.", code);
     if(!title.value.trim()) return fail("Enter a title.", title);
+    if(!docs.canRegisterNone && !department.value) return fail("Choose a department.", department);
     if(files.files.length === 0) return fail("Choose at least one file.", files);
     if(expires.value && issued.value && expires.value < issued.value) return fail("The expiry date cannot be before the issue date.", expires);
 
@@ -128,6 +129,7 @@ function uploadError(e, fields, takeSuggestion, fail){
     if(field === "department_id") return fail("That department is not available. Choose another.", fields.department_id);
     return fail("Check the form: one of the fields is too long or not valid.");
   }
+  if(e.code === "forbidden") return fail("Your role does not allow that here. Choose a department your role may register in.", fields.department_id);
   if(e.code === "too_large") return fail("The upload is too big. Send fewer or smaller files.", fields.files);
   return fail(errorWords(e));
 }
@@ -167,6 +169,7 @@ function openNewVersion(doc){
       openDetail(doc.id);
     }catch(e){
       if(e.status === 401) return;
+      if(e.code === "forbidden") return fail("Your role does not allow new versions of this document.");
       if(e.code === "version_conflict") return fail("Someone added a version at the same moment. Close this, look at the document again, and upload yours as the next one.");
       if(e.code === "invalid" && e.data.field === "change_note") return fail("The note can be up to 500 characters.", note);
       uploadError(e, {files: files}, null, fail);

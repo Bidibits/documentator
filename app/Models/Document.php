@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Auth\Access;
+use App\Auth\Grants;
 use Carbon\Carbon;
 use Database\Factories\DocumentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -83,7 +85,7 @@ class Document extends Model
      *
      * @return array<string, mixed>
      */
-    public function view(bool $full = false): array
+    public function view(bool $full = false, ?Grants $grants = null): array
     {
         $current = $this->currentVersion;
 
@@ -106,6 +108,15 @@ class Document extends Model
             'lastDownloadedAt' => $this->access('last_downloaded_at'),
             'archivedVersions' => (int) ($this->getAttributes()['archived_versions'] ?? 0),
         ];
+
+        // what the signed-in person may do with this document, for the screen to show or hide buttons
+        if ($grants !== null) {
+            $view['can'] = [
+                'download' => $grants->can(Access::TAGS['download'], $this->department_id),
+                'update' => $grants->can(Access::TAGS['update'], $this->department_id),
+                'archive' => $grants->can(Access::TAGS['archive'], $this->department_id),
+            ];
+        }
 
         if ($full) {
             $view['description'] = (string) $this->description;

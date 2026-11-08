@@ -44,6 +44,19 @@ final class ChangeLog
         self::write($table, $id, self::onUpdate($before, $after), $user, $source);
     }
 
+    /** A record that has been removed: each of its values, as it was, with nothing after. @param  array<string, mixed>  $values */
+    public static function deleted(string $table, int|string $id, array $values, ?User $user, string $source = self::MANUAL): void
+    {
+        $changes = [];
+        foreach ($values as $column => $value) {
+            $text = self::text($value, $column);
+            if ($text !== null) {
+                $changes[] = ['column' => $column, 'before' => self::shown($column, $text), 'after' => null, 'type' => 'Deleted'];
+            }
+        }
+        self::write($table, $id, $changes, $user, $source);
+    }
+
     /**
      * @param  array<string, mixed>  $values
      * @return list<array{column: string, before: ?string, after: ?string, type: string}>
