@@ -28,7 +28,7 @@ class FileController extends Controller
         AuditLog::record(
             SessionUser::resolve($request),
             $request->boolean('view') ? 'file.viewed' : 'file.downloaded',
-            $file->original_name.' (Rev '.$file->version->rev_no.')',
+            $file->original_name.' (Ver '.$file->version->rev_no.')',
             entityType: 'document',
             entityId: $document->code,
         );

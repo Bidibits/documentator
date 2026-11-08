@@ -128,3 +128,47 @@ function uploadError(e, fields, takeSuggestion, fail){
   if(e.code === "too_large") return fail("The upload is too big. Send fewer or smaller files.", fields.files);
   return fail(errorWords(e));
 }
+
+/* ---------- upload a new version of a document ---------- */
+// The document keeps its code and details; this adds a Ver 1, 2, ... with its own files and a note on what changed.
+function openNewVersion(doc){
+  const error = h("div", {class: "banner error", role: "alert", hidden: true}, icon("alert-circle"), h("span", {}));
+  const files = h("input", {id: "fld-vfiles", name: "files", type: "file", multiple: true, accept: FILE_TYPES});
+  const picked = h("ul", {class: "picked"});
+  const note = h("textarea", {id: "fld-vnote", name: "change_note", maxlength: "500"});
+  files.addEventListener("change", () => {
+    picked.replaceChildren(...[...files.files].map(f => h("li", {}, h("span", {}, f.name), h("span", {}, fmtSize(f.size)))));
+  });
+  const fail = (text, field) => { error.querySelector("span").textContent = text; error.hidden = false; error.scrollIntoView({block: "nearest"}); if(field) field.focus(); };
+
+  const next = doc.rev + 1;
+  const body = h("form", {novalidate: true, onsubmit: e => e.preventDefault()},
+    error,
+    h("p", {class: "hint"}, doc.code + " · " + doc.title + ". This becomes Ver " + next + ". Ver " + doc.rev + " and the earlier versions stay as they are."),
+    formField("vfiles", "Files for Ver " + next, files,
+      FILE_TYPES_WORDS + ". Up to 10 files of 25 MB each. These are the whole new version: choose every file it should have, not only the changed ones.", true),
+    picked,
+    formField("vnote", "What changed", note, "A short note for the version list, for example \"Rent raised from January\"."));
+
+  const save = async () => {
+    error.hidden = true;
+    if(files.files.length === 0) return fail("Choose at least one file.", files);
+    const form = new FormData();
+    if(note.value.trim() !== "") form.append("change_note", note.value.trim());
+    for(const file of files.files) form.append("files[]", file);
+    try{
+      const result = await api("POST", "/api/documents/" + doc.id + "/versions", form);
+      closeModal();
+      toast("Added Ver " + result.document.rev + " to " + doc.code);
+      await loadDocuments();
+      openDetail(doc.id);
+    }catch(e){
+      if(e.status === 401) return;
+      if(e.code === "version_conflict") return fail("Someone added a version at the same moment. Close this, look at the document again, and upload yours as the next one.");
+      if(e.code === "invalid" && e.data.field === "change_note") return fail("The note can be up to 500 characters.", note);
+      uploadError(e, {files: files}, null, fail);
+    }
+  };
+
+  openModal("Upload new version", body, save, "Upload");
+}

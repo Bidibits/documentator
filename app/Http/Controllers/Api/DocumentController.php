@@ -47,7 +47,7 @@ class DocumentController extends Controller
     }
 
     /**
-     * Registers a document with its first version (Rev 0) and one or more files, as one multipart form.
+     * Registers a document with its first version (Ver 0) and one or more files, as one multipart form.
      */
     public function store(Request $request): JsonResponse
     {
@@ -61,9 +61,7 @@ class DocumentController extends Controller
             'issued_on' => ['nullable', 'date_format:Y-m-d'],
             'expires_on' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:issued_on'],
             'location_note' => ['nullable', 'string', 'max:200'],
-            'files' => ['required', 'array', 'min:1', 'max:'.config('documentator.uploads.max_files')],
-            'files.*' => ['file', 'max:'.config('documentator.uploads.max_kilobytes'), $this->allowedType()],
-        ]);
+        ] + $this->fileRules());
 
         $user = SessionUser::resolve($request);
         $stored = [];
@@ -111,6 +109,63 @@ class DocumentController extends Controller
         $document->load(['currentVersion.files', 'creator', 'versions.files', 'versions.creator']);
 
         return response()->json(['document' => $document->view(true)], 201);
+    }
+
+    /**
+     * Adds a new version (Ver 1, 2, ...) of a document: one or more files and an optional note on what changed. The
+     * earlier versions and their files stay as they were; the new one becomes the current version.
+     */
+    public function storeVersion(Request $request, Document $document): JsonResponse
+    {
+        $data = $request->validate([
+            'change_note' => ['nullable', 'string', 'max:500'],
+        ] + $this->fileRules());
+
+        $user = SessionUser::resolve($request);
+        $stored = [];
+
+        try {
+            $number = DB::transaction(function () use ($data, $document, $user, &$stored) {
+                $number = (int) DocumentVersion::where('document_id', $document->id)->max('rev_no') + 1;
+
+                $version = DocumentVersion::create([
+                    'document_id' => $document->id,
+                    'rev_no' => $number,
+                    'change_note' => $data['change_note'] ?? null,
+                    'created_by' => $user->id,
+                ]);
+
+                foreach ($data['files'] as $order => $upload) {
+                    $stored[] = $this->keep($version, $upload, $order);
+                }
+
+                $document->update(['current_version_id' => $version->id, 'updated_by' => $user->id]);
+
+                return $number;
+            });
+        } catch (UniqueConstraintViolationException) {
+            // someone else added a version at the same moment and took this number
+            $this->discard($stored);
+            throw new ApiError(409, 'version_conflict');
+        } catch (Throwable $e) {
+            $this->discard($stored);
+            throw $e;
+        }
+
+        AuditLog::record($user, 'version.created', 'Ver '.$number, entityType: 'document', entityId: $document->code);
+
+        $document->load(['currentVersion.files', 'creator', 'versions.files', 'versions.creator']);
+
+        return response()->json(['document' => $document->view(true)], 201);
+    }
+
+    /** @return array<string, array<int, mixed>> the rules for the files of a registration or a new version */
+    private function fileRules(): array
+    {
+        return [
+            'files' => ['required', 'array', 'min:1', 'max:'.config('documentator.uploads.max_files')],
+            'files.*' => ['file', 'max:'.config('documentator.uploads.max_kilobytes'), $this->allowedType()],
+        ];
     }
 
     /**

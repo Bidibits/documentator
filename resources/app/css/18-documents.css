@@ -62,3 +62,6 @@
 .viewer-tabs{display:flex; gap:4px; padding:8px 12px 0; border-bottom:1px solid var(--line); overflow-x:auto; flex:none}
 .viewer-tab{border:1px solid var(--line); border-bottom:0; background:var(--surface-2); color:var(--ink-3); padding:6px 14px; border-radius:var(--r) var(--r) 0 0; font:inherit; font-size:12.5px; cursor:pointer; white-space:nowrap}
 .viewer-tab.on{background:var(--surface); color:var(--ink); font-weight:600}
+
+.modal p.hint{margin:0 0 16px; font-size:12.5px; color:var(--ink-3); line-height:1.45}
+.sec > .btn{margin-top:2px}

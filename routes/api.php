@@ -20,6 +20,7 @@ Route::middleware('documentator.signed-in')->group(function () {
     Route::get('documents/suggest-code', [DocumentController::class, 'suggestCode']);
     Route::post('documents', [DocumentController::class, 'store']);
     Route::get('documents/{document}', [DocumentController::class, 'show'])->whereNumber('document');
+    Route::post('documents/{document}/versions', [DocumentController::class, 'storeVersion'])->whereNumber('document');
 
     Route::get('files/{file}', [FileController::class, 'download'])->whereNumber('file');
 });

@@ -9,7 +9,7 @@ async function openDetail(id){
   // (replaceChildren turns a null into the text "null", so only real elements go in)
   $("#d-sub").replaceChildren(...[
     h("span", {class: "tag"}, doc.code),
-    h("span", {class: "pill p-mute"}, "Rev " + doc.rev),
+    h("span", {class: "pill p-mute"}, "Ver " + doc.rev),
     doc.type ? h("span", {}, doc.type) : null,
   ].filter(Boolean));
 
@@ -26,15 +26,16 @@ async function openDetail(id){
 
   $("#d-body").replaceChildren(
     section("Details", details.children.length ? details : h("p", {class: "empty-mini"}, "No details were entered.")),
-    section("Files in the current version (Rev " + doc.rev + ")", fileList(current.files)),
+    section("Files in the current version (Ver " + doc.rev + ")", fileList(current.files),
+      h("button", {class: "btn sm", type: "button", onclick: () => openNewVersion(doc)}, icon("upload"), "Upload new version")),
     section("Versions", timeline(doc.versions)));
 
   openDrawer();
   $("#d-body").scrollTop = 0;
 }
 
-function section(title, content){
-  return h("div", {class: "sec"}, h("h3", {}, title), content);
+function section(title, content, action){
+  return h("div", {class: "sec"}, h("h3", {}, title), content, action);
 }
 
 function fileList(files){
@@ -55,7 +56,7 @@ async function downloadClicked(button, file){
 function timeline(versions){
   return h("div", {class: "tl"}, versions.map(v => h("div", {class: "tl-item"},
     h("span", {class: "tl-dot"}),
-    h("div", {class: "tl-top"}, h("strong", {}, "Rev " + v.rev), h("span", {class: "tl-when"}, fmtStamp(v.createdAt))),
+    h("div", {class: "tl-top"}, h("strong", {}, "Ver " + v.rev), h("span", {class: "tl-when"}, fmtStamp(v.createdAt))),
     h("div", {class: "tl-sub"}, (v.rev === 0 ? "Registered by " : "Uploaded by ") + (v.createdBy || "unknown") + ", " + plural(v.files.length, "file")),
     v.changeNote ? h("div", {class: "tl-note"}, v.changeNote) : null)));
 }

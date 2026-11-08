@@ -91,13 +91,13 @@ function renderDocuments(){
       dash(doc.department),
       dash(fmtDate(doc.issuedOn)),
       expiryCell(doc),
-      h("td", {}, h("span", {class: "pill p-mute"}, "Rev " + doc.rev)),
+      h("td", {}, h("span", {class: "pill p-mute"}, "Ver " + doc.rev)),
       h("td", {class: "num"}, String(doc.fileCount)),
       h("td", {}, h("div", {}, doc.createdBy), h("div", {class: "sub"}, fmtStamp(doc.createdAt))));
   });
 
   $("#doc-table").replaceChildren(h("table", {class: "rt"},
-    h("thead", {}, h("tr", {}, th("Code"), th("Title"), th("Type"), th("Department"), th("Issued"), th("Expires"), th("Rev"), th("Files", "r"), th("Added"))),
+    h("thead", {}, h("tr", {}, th("Code"), th("Title"), th("Type"), th("Department"), th("Issued"), th("Expires"), th("Ver"), th("Files", "r"), th("Added"))),
     h("tbody", {}, rows)));
 }
 

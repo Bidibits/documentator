@@ -117,7 +117,7 @@ class DocumentTest extends TestCase
 
     // ---- registering ----
 
-    public function test_a_document_is_registered_with_rev_0_and_its_file(): void
+    public function test_a_document_is_registered_with_ver_0_and_its_file(): void
     {
         $this->signedIn();
 
@@ -371,6 +371,67 @@ class DocumentTest extends TestCase
             ->assertJsonPath('document.versions.0.files.0.name', 'contract.pdf');
     }
 
+    // ---- new versions ----
+
+    /** Sends the new-version form the way the page does. */
+    private function addVersion(int $id, array $fields = [], ?array $files = null): TestResponse
+    {
+        $fields['files'] = $files ?? [$this->pdf('contract-v2.pdf')];
+
+        return $this->post("/api/documents/{$id}/versions", $fields, ['X-Documentator' => '1', 'Accept' => 'application/json']);
+    }
+
+    public function test_a_new_version_becomes_the_current_one_and_the_old_one_stays(): void
+    {
+        $this->signedIn();
+        $id = $this->register()->assertCreated()->json('document.id');
+        $oldFile = DocumentFile::query()->firstOrFail();
+
+        $this->addVersion($id, ['change_note' => 'Rent raised'])->assertCreated()
+            ->assertJsonPath('document.rev', 1)
+            ->assertJsonPath('document.fileCount', 1)
+            ->assertJsonPath('document.versions.0.rev', 1)
+            ->assertJsonPath('document.versions.0.changeNote', 'Rent raised')
+            ->assertJsonPath('document.versions.0.files.0.name', 'contract-v2.pdf')
+            ->assertJsonPath('document.versions.1.rev', 0)
+            ->assertJsonPath('document.versions.1.files.0.name', 'contract.pdf');
+
+        $this->assertSame(1, Document::count());
+        Storage::disk('local')->assertExists($oldFile->storage_path);
+        $this->api('GET', "/api/files/{$oldFile->id}")->assertOk();
+
+        $this->addVersion($id, [], [$this->pdf('a.pdf'), $this->pdf('b.pdf')])->assertCreated()
+            ->assertJsonPath('document.rev', 2)
+            ->assertJsonPath('document.fileCount', 2)
+            ->assertJsonPath('document.versions.0.changeNote', '');
+
+        $this->assertSame(['sign-in', 'document.created', 'version.created', 'file.downloaded', 'version.created'], $this->actions());
+        $this->assertSame('Ver 2', DB::table('audit_logs')->where('action', 'version.created')->orderByDesc('id')->value('note'));
+    }
+
+    public function test_a_new_version_needs_a_sign_in_and_an_existing_document(): void
+    {
+        $this->api('POST', '/api/documents/1/versions')->assertStatus(401)->assertExactJson(['error' => 'signin']);
+
+        $this->signedIn();
+        $this->addVersion(999)->assertStatus(404)->assertExactJson(['error' => 'route']);
+    }
+
+    public function test_a_refused_new_version_leaves_the_document_as_it_was(): void
+    {
+        $this->signedIn();
+        $id = $this->register()->assertCreated()->json('document.id');
+
+        $this->addVersion($id, [], [])->assertStatus(422)->assertJsonPath('field', 'files');
+        $this->addVersion($id, [], [UploadedFile::fake()->create('run.exe', 5, 'application/x-msdownload')])
+            ->assertStatus(422)->assertJsonPath('field', 'files');
+        $this->addVersion($id, ['change_note' => str_repeat('x', 501)])->assertStatus(422)->assertJsonPath('field', 'change_note');
+
+        $this->assertSame(1, DB::table('document_versions')->count());
+        $this->assertSame(1, DocumentFile::count());
+        $this->assertCount(1, Storage::disk('local')->allFiles());
+    }
+
     public function test_an_unknown_document_is_a_404_in_the_error_shape(): void
     {
         $this->signedIn();
@@ -406,7 +467,7 @@ class DocumentTest extends TestCase
         $this->assertStringContainsString('attachment', $response->headers->get('Content-Disposition'));
         $this->assertSame('nosniff', $response->headers->get('X-Content-Type-Options'));
         $this->assertSame(['sign-in', 'document.created', 'file.viewed'], $this->actions());
-        $this->assertSame('contract.pdf (Rev 0)', DB::table('audit_logs')->where('action', 'file.viewed')->value('note'));
+        $this->assertSame('contract.pdf (Ver 0)', DB::table('audit_logs')->where('action', 'file.viewed')->value('note'));
     }
 
     public function test_the_downloaded_bytes_are_the_uploaded_bytes(): void

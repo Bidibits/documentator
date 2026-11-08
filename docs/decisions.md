@@ -25,7 +25,7 @@ Settled calls, with the reason. Check here before changing the schema or the rul
 
 ## Documents
 
-- **One code = one document**, like a stapled packet. A document has versions (Rev 0, 1, ...), and a version has one or more
+- **One code = one document**, like a stapled packet. A document has versions (**Ver** 0, 1, ...; the user preferred "Ver" to "Rev", 8 Nov 2026), and a version has one or more
   files. "Folder" means the physical place the paper is kept, never a document.
 - **The code is free text.** The app only *suggests* `TSI-YY-MM-DD-NN` (today in Asia/Manila, next free number, two digits,
   more past 99), filled in on the form. The person may keep it, edit it, or type any code ("RandomCodeafe"). It is unique
@@ -54,10 +54,16 @@ Settled calls, with the reason. Check here before changing the schema or the rul
   or editing in the browser means an editor service (OnlyOffice, Collabora, Microsoft 365), a later decision; for now the
   way to change a file is download, edit, upload as a new version.
 - Until roles exist, every signed-in person can register, read and download. Permissions come with the roles step.
-- Not built yet: uploading a new version (Rev 1...) with a change note, restoring a version, the duplicate-file warning,
-  a per-document audit timeline.
+- **Uploading a new version (8 Nov 2026):** "Upload new version" in the drawer adds Ver 1, 2, ... to the same document (same
+  code and details). The new version is the whole set of files for that version (not only the changed ones), with an optional
+  change note (up to 500 characters). Earlier versions and their files are kept and stay downloadable. The number is the
+  highest plus one, and a clash with someone uploading at the same moment is refused as `version_conflict`. Audited as
+  `version.created` with the note "Ver N". Internally the column and the API field are still named `rev_no` / `rev`; only the
+  words on screen and in the audit notes say Ver.
+- Not built yet: restoring an old version, the duplicate-file warning, a per-document audit timeline, editing a document's
+  details (title, dates, location) after registering.
 
 ## Audit
 
 - `audit_logs` is append-only; on SQLite triggers refuse UPDATE and DELETE. Sign-in, failed sign-in, sign-out, user creation,
-  document registration and file downloads are recorded.
+  document registration, new versions and file views and downloads are recorded.
