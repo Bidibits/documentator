@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Builds the Digital Information Keeper app page from resources/app (the same way PMS builds Bench):
+// Builds the Documentanator app page from resources/app (the same way PMS builds Bench):
 //
 //   index.html   the page, with <!-- documentator:head --> and <!-- documentator:app --> where the code goes
 //   head.js      runs before the first paint (theme)

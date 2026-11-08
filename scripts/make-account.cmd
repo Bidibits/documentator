@@ -1,5 +1,5 @@
 @echo off
-rem Makes a Digital Information Keeper account from the command line, using Docker so PHP need not be installed.
+rem Makes a Documentanator account from the command line, using Docker so PHP need not be installed.
 rem It asks for the password itself (twice), so the password never goes through chat or the command line.
 rem
 rem   scripts\make-account.cmd admin "Administrator"     a new account

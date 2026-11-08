@@ -1,4 +1,4 @@
-# Digital Information Keeper: decisions
+# Documentanator: decisions
 
 Settled calls, with the reason. Check here before changing the schema or the rules. Source of the plan:
 `Documentator-Handover.pdf` (7 Nov 2026), where a choice there is not overridden below.
@@ -306,7 +306,7 @@ Settled calls, with the reason. Check here before changing the schema or the rul
 
 ## The name (9 Nov 2026, the user's call)
 
-- The app is called **Digital Information Keeper** (it was Documentator, briefly Documentanator) wherever a person sees it: the page title, the side bar and sign-in cards, the start-up
+- The app is called **Documentanator** (it was Documentator; "Digital Information Keeper" was tried and dropped) wherever a person sees it: the page title, the side bar and sign-in cards, the start-up
   messages and scripts, `APP_NAME`. **Inside, the old spelling stays** (`config/documentator.php`, the `X-Documentator` header, the
   `documentator.*` permission names stored in roles, `DOCUMENTATOR_*` settings, the `/build/documentator/` folder, the project
   folder, and the name of the handover PDF): renaming those would break stored roles and sessions and changes nothing on screen.

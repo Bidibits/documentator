@@ -12,7 +12,7 @@ class AppPageTest extends TestCase
     {
         parent::setUp();
         $this->page = tempnam(sys_get_temp_dir(), 'doc-page');
-        file_put_contents($this->page, '<!DOCTYPE html><title>Digital Information Keeper</title>');
+        file_put_contents($this->page, '<!DOCTYPE html><title>Documentanator</title>');
         config(['documentator.app_page' => $this->page]);
     }
 
@@ -24,7 +24,7 @@ class AppPageTest extends TestCase
 
     public function test_the_built_page_is_served_with_a_strict_content_security_policy(): void
     {
-        $response = $this->get('/')->assertOk()->assertSee('Digital Information Keeper', false);
+        $response = $this->get('/')->assertOk()->assertSee('Documentanator', false);
 
         $csp = $response->headers->get('Content-Security-Policy');
         $this->assertStringContainsString("script-src 'self'", $csp);
@@ -39,7 +39,7 @@ class AppPageTest extends TestCase
 
     public function test_index_html_is_the_same_page(): void
     {
-        $this->get('/index.html')->assertOk()->assertSee('Digital Information Keeper', false);
+        $this->get('/index.html')->assertOk()->assertSee('Documentanator', false);
     }
 
     public function test_an_unbuilt_page_says_how_to_build_it(): void
