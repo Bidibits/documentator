@@ -9,12 +9,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Document;
 use App\Models\DocumentFile;
 use App\Models\DocumentVersion;
+use App\Models\User;
 use App\Support\AuditLog;
+use App\Support\ChangeLog;
 use Closure;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -22,10 +25,13 @@ use Throwable;
 
 class DocumentController extends Controller
 {
+    /** The columns of a new document that go into the change log (its dates are added as typed). */
+    private const LOGGED_DOCUMENT_COLUMNS = ['code', 'title', 'doc_type', 'department', 'description', 'location_note', 'current_version_id', 'created_by', 'updated_by'];
+
     /** The register: newest first, plus the departments and types already in use (the form offers them). */
     public function index(): JsonResponse
     {
-        $documents = Document::with(['currentVersion.files', 'creator'])->orderByDesc('id')->get();
+        $documents = Document::withAccessDates()->with(['currentVersion.files', 'creator'])->orderByDesc('id')->get();
 
         return response()->json([
             'documents' => $documents->map->view()->all(),
@@ -41,7 +47,7 @@ class DocumentController extends Controller
 
     public function show(Document $document): JsonResponse
     {
-        $document->load(['currentVersion.files', 'creator', 'versions.files', 'versions.creator']);
+        $document->load(Document::DETAIL);
 
         return response()->json(['document' => $document->view(true)]);
     }
@@ -86,12 +92,15 @@ class DocumentController extends Controller
                     'rev_no' => 0,
                     'created_by' => $user->id,
                 ]);
+                ChangeLog::created('document_versions', $version->id, ['document_id' => $document->id, 'rev_no' => 0, 'created_by' => $user->id], $user);
 
                 foreach ($data['files'] as $order => $upload) {
-                    $stored[] = $this->keep($version, $upload, $order);
+                    $stored[] = $this->keep($version, $upload, $order, $user);
                 }
 
                 $document->update(['current_version_id' => $version->id]);
+
+                ChangeLog::created('documents', $document->id, Arr::only($document->getAttributes(), self::LOGGED_DOCUMENT_COLUMNS) + ['issued_on' => $data['issued_on'] ?? null, 'expires_on' => $data['expires_on'] ?? null], $user);
 
                 return $document;
             });
@@ -106,7 +115,7 @@ class DocumentController extends Controller
 
         AuditLog::record($user, 'document.created', $document->title, entityType: 'document', entityId: $document->code);
 
-        $document->load(['currentVersion.files', 'creator', 'versions.files', 'versions.creator']);
+        $document->load(Document::DETAIL);
 
         return response()->json(['document' => $document->view(true)], 201);
     }
@@ -134,12 +143,15 @@ class DocumentController extends Controller
                     'change_note' => $data['change_note'] ?? null,
                     'created_by' => $user->id,
                 ]);
+                ChangeLog::created('document_versions', $version->id, ['document_id' => $document->id, 'rev_no' => $number, 'change_note' => $data['change_note'] ?? null, 'created_by' => $user->id], $user);
 
                 foreach ($data['files'] as $order => $upload) {
-                    $stored[] = $this->keep($version, $upload, $order);
+                    $stored[] = $this->keep($version, $upload, $order, $user);
                 }
 
+                $before = Arr::only($document->getAttributes(), ['current_version_id', 'updated_by']);
                 $document->update(['current_version_id' => $version->id, 'updated_by' => $user->id]);
+                ChangeLog::updated('documents', $document->id, $before, ['current_version_id' => $version->id, 'updated_by' => $user->id], $user);
 
                 return $number;
             });
@@ -154,7 +166,7 @@ class DocumentController extends Controller
 
         AuditLog::record($user, 'version.created', 'Ver '.$number, entityType: 'document', entityId: $document->code);
 
-        $document->load(['currentVersion.files', 'creator', 'versions.files', 'versions.creator']);
+        $document->load(Document::DETAIL);
 
         return response()->json(['document' => $document->view(true)], 201);
     }
@@ -173,7 +185,7 @@ class DocumentController extends Controller
      *
      * @return string the storage path, so a failed save can remove it
      */
-    private function keep(DocumentVersion $version, UploadedFile $upload, int $order): string
+    private function keep(DocumentVersion $version, UploadedFile $upload, int $order, User $user): string
     {
         $extension = $this->extensionOf($upload);
         // stored as what its extension says it is (the content was already checked to fit): a docx the detector
@@ -185,7 +197,7 @@ class DocumentController extends Controller
             throw new ApiError(500, 'storage');
         }
 
-        DocumentFile::create([
+        $file = DocumentFile::create([
             'version_id' => $version->id,
             'original_name' => $this->cleanName($upload->getClientOriginalName(), $extension),
             'storage_path' => $path,
@@ -194,6 +206,7 @@ class DocumentController extends Controller
             'sha256' => $sha256,
             'sort_order' => $order,
         ]);
+        ChangeLog::created('document_files', $file->id, Arr::only($file->getAttributes(), ['version_id', 'original_name', 'mime', 'size', 'sha256', 'sort_order']), $user);
 
         return $path;
     }

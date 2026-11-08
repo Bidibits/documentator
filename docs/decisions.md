@@ -91,3 +91,11 @@ Settled calls, with the reason. Check here before changing the schema or the rul
   never be archived.** Rules, set on the same screen: archive a version automatically when it has not been accessed for X
   days / months / years, and/or when it is an old (not current) version.
 - **Documents page:** each version shows whether it is archived.
+
+- **Built (8 Nov 2026), step 1:** `audit_changes` (one row per changed column, written in the same transaction as the save,
+  append-only by trigger; `App\Support\ChangeLog`, rules in its unit test) now records the creation of documents, versions,
+  files and accounts, a new version's change to its document, and a password change (value hidden). `true`/`false` columns are
+  logged in words. Other tables join as screens that edit them are built. Files carry `last_viewed_at/by` and
+  `last_downloaded_at/by`; the drawer shows them under each file, the table shows the latest of each per document. **Not
+  column-audited on purpose:** the access dates themselves, since each press is already a line in `audit_logs`.
+  The step-2 Audits screen reads `audit_changes`.

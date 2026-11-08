@@ -65,6 +65,11 @@ function expiryCell(doc){
   return doc.expiresOn ? h("td", {}, expiryContent(doc)) : h("td", {class: "muted-cell"}, "-");
 }
 
+// the date of the last view or download (the time is in the hover text); "-" when never
+function usedCell(at){
+  return at ? h("td", {class: "nowrap", title: fmtStamp(at)}, fmtStamp(at).split(",")[0]) : h("td", {class: "muted-cell"}, "-");
+}
+
 function renderDocuments(){
   const shown = docs.all.filter(d => matches(d, docs.query));
   $("#doc-count").textContent = docs.all.length === 0 ? "" :
@@ -93,11 +98,13 @@ function renderDocuments(){
       expiryCell(doc),
       h("td", {}, h("span", {class: "pill p-mute"}, "Ver " + doc.rev)),
       h("td", {class: "num"}, String(doc.fileCount)),
+      usedCell(doc.lastViewedAt),
+      usedCell(doc.lastDownloadedAt),
       h("td", {}, h("div", {}, doc.createdBy), h("div", {class: "sub"}, fmtStamp(doc.createdAt))));
   });
 
   $("#doc-table").replaceChildren(h("table", {class: "rt"},
-    h("thead", {}, h("tr", {}, th("Code"), th("Title"), th("Type"), th("Department"), th("Issued"), th("Expires"), th("Ver"), th("Files", "r"), th("Added"))),
+    h("thead", {}, h("tr", {}, th("Code"), th("Title"), th("Type"), th("Department"), th("Issued"), th("Expires"), th("Ver"), th("Files", "r"), th("Last viewed"), th("Last downloaded"), th("Added"))),
     h("tbody", {}, rows)));
 }
 

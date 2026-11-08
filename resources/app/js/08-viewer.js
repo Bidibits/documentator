@@ -29,6 +29,7 @@ async function openViewer(file){
   try{
     const blob = await apiBlob("/api/files/" + file.id + "?view=1");
     if(token !== viewerToken) return;   // closed, or another file opened, while this one was coming
+    noteAccess(file, "viewed");
 
     if(kind === "pdf" || kind === "image"){
       address = URL.createObjectURL(blob);
@@ -137,7 +138,7 @@ function cellText(v){
 }
 
 async function downloadFile(file){
-  try{ await apiDownload("/api/files/" + file.id, file.name); }
+  try{ await apiDownload("/api/files/" + file.id, file.name); noteAccess(file, "downloaded"); }
   catch(e){ if(e.status !== 401) toast(e.code === "file_missing" ? "That file is missing from the server's storage." : errorWords(e), "warn"); }
 }
 

@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Database\Factories\DocumentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 #[Fillable([
     'code', 'title', 'doc_type', 'department', 'description', 'issued_on', 'expires_on', 'location_note',
@@ -23,6 +26,28 @@ class Document extends Model
         return ['issued_on' => 'date', 'expires_on' => 'date'];
     }
 
+    /** What the drawer needs loaded to show a whole document. */
+    public const DETAIL = [
+        'currentVersion.files', 'creator', 'versions.creator',
+        'versions.files.viewer', 'versions.files.downloader',
+    ];
+
+    /**
+     * Adds last_viewed_at and last_downloaded_at: the latest of any file of any version (the table shows them).
+     */
+    public function scopeWithAccessDates(Builder $query): void
+    {
+        $latest = fn (string $column) => DB::table('document_files as f')
+            ->join('document_versions as v', 'v.id', '=', 'f.version_id')
+            ->whereColumn('v.document_id', 'documents.id')
+            ->selectRaw("max(f.{$column})");
+
+        $query->select('documents.*')->addSelect([
+            'last_viewed_at' => $latest('last_viewed_at'),
+            'last_downloaded_at' => $latest('last_downloaded_at'),
+        ]);
+    }
+
     public function versions(): HasMany
     {
         return $this->hasMany(DocumentVersion::class)->orderByDesc('rev_no');
@@ -36,6 +61,14 @@ class Document extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /** A column added by withAccessDates (stored as UTC text), as the browser reads timestamps; empty when never. */
+    private function access(string $column): string
+    {
+        $value = $this->getAttributes()[$column] ?? null;
+
+        return $value === null ? '' : User::stamp(Carbon::parse($value, 'UTC'));
     }
 
     /**
@@ -61,6 +94,8 @@ class Document extends Model
             'createdBy' => $this->creator?->name ?? '',
             'createdAt' => User::stamp($this->created_at),
             'updatedAt' => User::stamp($this->updated_at),
+            'lastViewedAt' => $this->access('last_viewed_at'),
+            'lastDownloadedAt' => $this->access('last_downloaded_at'),
         ];
 
         if ($full) {

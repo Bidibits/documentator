@@ -6,7 +6,10 @@ use App\Auth\PasswordPolicy;
 use App\Auth\SessionUser;
 use App\Models\User;
 use App\Support\AuditLog;
+use App\Support\ChangeLog;
 use Illuminate\Console\Command;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class SetPassword extends Command
@@ -45,7 +48,14 @@ class SetPassword extends Command
 
         $created = $user === null;
         $user ??= new User(['username' => $username, 'name' => (string) ($this->option('name') ?: $username)]);
-        $user->fill(['password' => $password, 'password_changed_at' => now()])->save();
+        $columns = ['username', 'name', 'password', 'active', 'auth_source', 'external_id', 'password_changed_at'];
+        // the account and its change rows are one save: both or neither
+        DB::transaction(function () use ($user, $password, $created, $columns) {
+            $before = $created ? [] : Arr::only($user->getAttributes(), $columns);
+            $user->fill(['password' => $password, 'password_changed_at' => now()->utc()])->save();
+            $after = Arr::only((array) DB::table('users')->where('id', $user->id)->first(), $columns);
+            $created ? ChangeLog::created('users', $user->id, $after, $user) : ChangeLog::updated('users', $user->id, $before, $after, $user);
+        });
 
         if (! $created) {
             SessionUser::endAllFor($user);

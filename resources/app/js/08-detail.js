@@ -38,10 +38,30 @@ function section(title, content, action){
   return h("div", {class: "sec"}, h("h3", {}, title), content, action);
 }
 
+// "Last viewed: 8 Nov 2026, 14:30 by Ana Reyes" / "Last downloaded: never"
+function accessLine(label, at, by){
+  return label + ": " + (at ? fmtStamp(at) + (by ? " by " + by : "") : "never");
+}
+// the small text under each file, by file id, so pressing View or Download can bring it up to date at once
+const accessText = new Map();
+function accessLines(file){
+  return [accessLine("Last viewed", file.lastViewedAt, file.lastViewedBy),
+          accessLine("Last downloaded", file.lastDownloadedAt, file.lastDownloadedBy)].join("\n");
+}
+// a file was just viewed or downloaded by the signed-in person
+function noteAccess(file, kind){
+  file["last" + (kind === "viewed" ? "Viewed" : "Downloaded") + "At"] = new Date().toISOString();
+  file["last" + (kind === "viewed" ? "Viewed" : "Downloaded") + "By"] = currentUser ? currentUser.name || currentUser.username : "";
+  const line = accessText.get(file.id);
+  if(line && line.isConnected) line.textContent = accessLines(file);
+  loadDocuments();   // the table's last viewed / downloaded columns
+}
+
 function fileList(files){
   return h("div", {class: "files"}, files.map(file => h("div", {class: "file-row"},
     h("span", {class: "fi"}, icon("docs")),
-    h("div", {class: "fb"}, h("div", {class: "fn"}, file.name), h("div", {class: "fs"}, fmtSize(file.size))),
+    h("div", {class: "fb"}, h("div", {class: "fn"}, file.name), h("div", {class: "fs"}, fmtSize(file.size)),
+      (() => { const line = h("div", {class: "fs access"}, accessLines(file)); accessText.set(file.id, line); return line; })()),
     h("div", {class: "file-acts"},
       previewKind(file.name) ? h("button", {class: "btn sm", type: "button", onclick: () => openViewer(file)}, icon("eye"), "View") : null,
       h("button", {class: "btn sm", type: "button", onclick: event => downloadClicked(event.currentTarget, file)}, icon("download"), "Download")))));

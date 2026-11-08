@@ -25,13 +25,18 @@ class FileController extends Controller
         }
 
         $document = $file->version->document;
+        $user = SessionUser::resolve($request);
+        $viewing = $request->boolean('view');
         AuditLog::record(
-            SessionUser::resolve($request),
-            $request->boolean('view') ? 'file.viewed' : 'file.downloaded',
+            $user,
+            $viewing ? 'file.viewed' : 'file.downloaded',
             $file->original_name.' (Ver '.$file->version->rev_no.')',
             entityType: 'document',
             entityId: $document->code,
         );
+        // when it was last used and by whom: shown beside the buttons and read by the archive rules
+        $when = $viewing ? 'viewed' : 'downloaded';
+        $file->forceFill(["last_{$when}_at" => now()->utc(), "last_{$when}_by" => $user->id])->save();
 
         return $disk->download($file->storage_path, $file->original_name, [
             'Content-Type' => $file->mime,
