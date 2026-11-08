@@ -21,6 +21,7 @@ function showPage(name){
   closeNav();
   if(name === "documents") loadDocuments();
   if(name === "audits") loadAudits();
+  if(name === "archiving") loadArchive();
 }
 
 // the wide screen's side bar folds to icons and back; the choice is kept in this browser

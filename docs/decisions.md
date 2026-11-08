@@ -60,7 +60,7 @@ Settled calls, with the reason. Check here before changing the schema or the rul
   highest plus one, and a clash with someone uploading at the same moment is refused as `version_conflict`. Audited as
   `version.created` with the note "Ver N". Internally the column and the API field are still named `rev_no` / `rev`; only the
   words on screen and in the audit notes say Ver.
-- Not built yet: restoring an old version, the duplicate-file warning, a per-document audit timeline, editing a document's
+- Not built yet: the duplicate-file warning, a per-document audit timeline, editing a document's
   details (title, dates, location) after registering.
 
 ## Audit
@@ -116,3 +116,17 @@ Settled calls, with the reason. Check here before changing the schema or the rul
   (`documentator.rail.v1`, applied before first paint by `head.js`). Under 1024 px it slides over the page from the menu
   button and closes on picking a panel, on Esc, or on tapping outside it. The CSS follows PMS's `04-app-shell.css` and
   `24-responsive-layout.css`.
+
+- **Built (8 Nov 2026), step 3, manual archiving:** the unit is a **version**. Archiving packs all of a version's files into
+  one zip (`archive/<document id>/ver-N-<uuid>.zip` on the private disk, each file named by its id inside) and removes the
+  loose copies, **only after** the zip is written and every file in it hashes to the SHA-256 recorded at upload; the
+  `document_files` rows stay. **A current version is refused** (`current_version`, 409). An archived file still views and
+  downloads, read out of the zip (slower), audited as before. Taking a version out unpacks to the original paths, checks the
+  hashes again, then deletes the zip. Each archive or restore is a column change on `document_versions` (`archived_at`,
+  `archived_by`, shown in Audits as "Archived on / by") and a `version.archived` / `version.restored` line in `audit_logs`.
+  The Archiving panel lists only old versions, the most recently opened first and never-opened last (tie: newer first), with
+  tick boxes, select all (what is shown), "Archive selected" and "Take out of archive", a filter (all / not archived /
+  archived) and a search; one request per version so a long run shows progress and one failure stops no other. The
+  Documents list shows "N archived" beside a document's Ver, and the drawer marks each archived version. **Honest note:**
+  zipping already-compressed files saves little, and a tiny file gets bigger in a zip (fixed overhead); the panel prints the
+  real before and after. The list has no paging yet; it comes with volume. Step 4 (automatic rules) is not built.

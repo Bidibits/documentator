@@ -29,7 +29,7 @@ class Document extends Model
     /** What the drawer needs loaded to show a whole document. */
     public const DETAIL = [
         'currentVersion.files', 'creator', 'versions.creator',
-        'versions.files.viewer', 'versions.files.downloader',
+        'versions.files.viewer', 'versions.files.downloader', 'versions.archiver',
     ];
 
     /**
@@ -45,6 +45,8 @@ class Document extends Model
         $query->select('documents.*')->addSelect([
             'last_viewed_at' => $latest('last_viewed_at'),
             'last_downloaded_at' => $latest('last_downloaded_at'),
+            'archived_versions' => DB::table('document_versions as av')->whereColumn('av.document_id', 'documents.id')
+                ->whereNotNull('av.archived_at')->selectRaw('count(*)'),
         ]);
     }
 
@@ -96,6 +98,7 @@ class Document extends Model
             'updatedAt' => User::stamp($this->updated_at),
             'lastViewedAt' => $this->access('last_viewed_at'),
             'lastDownloadedAt' => $this->access('last_downloaded_at'),
+            'archivedVersions' => (int) ($this->getAttributes()['archived_versions'] ?? 0),
         ];
 
         if ($full) {

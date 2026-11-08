@@ -77,8 +77,11 @@ async function downloadClicked(button, file){
 function timeline(versions, currentId){
   return h("div", {class: "tl"}, versions.map(v => h("div", {class: "tl-item"},
     h("span", {class: "tl-dot"}),
-    h("div", {class: "tl-top"}, h("strong", {}, "Ver " + v.rev), h("span", {class: "tl-when"}, fmtStamp(v.createdAt))),
+    h("div", {class: "tl-top"}, h("strong", {}, "Ver " + v.rev),
+      v.archived ? h("span", {class: "pill p-accent"}, icon("archive"), "Archived") : null,
+      h("span", {class: "tl-when"}, fmtStamp(v.createdAt))),
     h("div", {class: "tl-sub"}, (v.rev === 0 ? "Registered by " : "Uploaded by ") + (v.createdBy || "unknown") + ", " + plural(v.files.length, "file")),
     v.changeNote ? h("div", {class: "tl-note"}, v.changeNote) : null,
+    v.archived ? h("div", {class: "tl-sub"}, "Archived " + fmtStamp(v.archivedAt) + (v.archivedBy ? " by " + v.archivedBy : "") + ", packed into " + fmtSize(v.archiveSize) + ". Its files open and download more slowly.") : null,
     v.id === currentId ? h("div", {class: "tl-sub"}, "Current version, files above") : h("div", {class: "tl-files"}, fileList(v.files)))));
 }

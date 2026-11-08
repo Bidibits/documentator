@@ -42,10 +42,12 @@ final class ChangeReader
         'auth_source' => 'Sign-in source',
         'external_id' => 'External id',
         'password_changed_at' => 'Password changed',
+        'archived_at' => 'Archived on',
+        'archived_by' => 'Archived by',
     ];
 
     /** Columns that hold a person's id, a document's id or a version's id: the log shows the name instead. */
-    private const PEOPLE = ['created_by', 'updated_by'];
+    private const PEOPLE = ['created_by', 'updated_by', 'archived_by'];
 
     /** Columns holding true or false. */
     private const YES_NO = ['active'];
@@ -159,7 +161,7 @@ final class ChangeReader
         $ids = fn (string $table) => $rows->where('table_name', $table)->pluck('record_id')->unique()->all();
         $refs = fn (string $column) => $rows->where('column_name', $column)->flatMap(fn ($r) => [$r->value_before, $r->value_after])->filter()->unique()->all();
 
-        $userIds = array_merge($ids('users'), $refs('created_by'), $refs('updated_by'), $rows->pluck('actor_user_id')->filter()->all());
+        $userIds = array_merge($ids('users'), $refs('created_by'), $refs('updated_by'), $refs('archived_by'), $rows->pluck('actor_user_id')->filter()->all());
         $versionIds = array_merge($ids('document_versions'), $refs('version_id'), $refs('current_version_id'));
         $fileIds = $ids('document_files');
         $documentIds = array_merge($ids('documents'), $refs('document_id'));

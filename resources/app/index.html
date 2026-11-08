@@ -94,12 +94,30 @@
     </section>
 
     <section class="page" id="page-archiving" hidden>
-      <div class="page-head"><div class="ph-t"><h1>Archiving</h1><p>Old versions that nobody opens, packed away to save space.</p></div></div>
-      <div class="card"><div class="empty">
-        <div class="empty-ic"><svg class="ic"><use href="#i-docs"></use></svg></div>
-        <h3>Not built yet</h3>
-        <p>Here you will archive versions by hand or set rules, such as "not opened for a year", and take versions back out. The last viewed and last downloaded dates it needs are already recorded.</p>
-      </div></div>
+      <div class="page-head">
+        <div class="ph-t">
+          <h1>Archiving</h1>
+          <p>Old versions that nobody opens, packed into a zip to save space. An archived file still opens and downloads, only slower. A current version can never be archived.</p>
+        </div>
+        <div class="ph-a">
+          <button class="btn primary" id="arch-do" type="button" disabled><svg class="ic"><use href="#i-archive"></use></svg><span id="arch-do-lbl">Archive selected</span></button>
+          <button class="btn" id="arch-undo" type="button" disabled>Take out of archive</button>
+        </div>
+      </div>
+      <div class="toolbar">
+        <div class="q-wrap">
+          <svg class="ic"><use href="#i-search"></use></svg>
+          <input id="arch-q" type="search" placeholder="Search versions" autocomplete="off" spellcheck="false" aria-label="Search versions">
+        </div>
+        <select id="arch-filter" aria-label="Show">
+          <option value="all">All old versions</option>
+          <option value="live">Not archived</option>
+          <option value="archived">Archived</option>
+        </select>
+        <span class="count-note" id="arch-count"></span>
+      </div>
+      <p class="arch-summary" id="arch-summary"></p>
+      <div class="card tbl-card"><div class="tbl-scroll" id="arch-table"></div></div>
     </section>
 
     <section class="page" id="page-audits" hidden>

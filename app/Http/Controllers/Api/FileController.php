@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Auth\SessionUser;
+use App\Documents\Archive;
 use App\Exceptions\ApiError;
 use App\Http\Controllers\Controller;
 use App\Models\DocumentFile;
@@ -10,6 +11,7 @@ use App\Support\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use ZipArchive;
 
 class FileController extends Controller
 {
@@ -20,7 +22,9 @@ class FileController extends Controller
     public function download(Request $request, DocumentFile $file): StreamedResponse
     {
         $disk = Storage::disk('local');
-        if (! $disk->exists($file->storage_path)) {
+        $archived = $file->version->isArchived();
+        // an archived version's files are read out of its zip (slower); the others from where they were stored
+        if (! $disk->exists($archived ? (string) $file->version->archive_path : $file->storage_path)) {
             throw new ApiError(404, 'file_missing');
         }
 
@@ -38,10 +42,27 @@ class FileController extends Controller
         $when = $viewing ? 'viewed' : 'downloaded';
         $file->forceFill(["last_{$when}_at" => now()->utc(), "last_{$when}_by" => $user->id])->save();
 
-        return $disk->download($file->storage_path, $file->original_name, [
+        $headers = [
             'Content-Type' => $file->mime,
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, no-store',
-        ]);
+        ];
+
+        if ($archived) {
+            $headers['Content-Length'] = (string) $file->size;
+
+            return response()->streamDownload(function () use ($file, $disk) {
+                $zip = new ZipArchive;
+                $stream = $zip->open($disk->path($file->version->archive_path)) === true ? $zip->getStream(Archive::entryName($file)) : false;
+                if ($stream === false) {
+                    return;
+                }
+                fpassthru($stream);
+                fclose($stream);
+                $zip->close();
+            }, $file->original_name, $headers);
+        }
+
+        return $disk->download($file->storage_path, $file->original_name, $headers);
     }
 }
