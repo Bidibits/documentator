@@ -262,3 +262,44 @@ Settled calls, with the reason. Check here before changing the schema or the rul
   Renew button where the role may update; a red count badge on its sidebar item (a dot in the folded rail).
 - **Not built:** the daily e-mail / Teams reminders (see "To do later"), a per-department warning period, and a "does not
   expire" marker (a document without a date is simply never listed).
+
+## Paging, delete, any file, folders (9 Nov 2026, the user's call)
+
+- **Paging, done by the server.** Documents (25 to a page; 50 or 100 can be asked for), Expiring (25), Audits (100 changes) and
+  Archiving (50) each come one page at a time with `page`, `pages`, `total`, `per`; a page past the end is the last page. Search and
+  filters run in the database, so they look through everything, not only the page on screen (Documents: every typed word must be in
+  the code, title, type, location or department name; `%` and `_` are plain letters; Archiving: code, title, note, "Ver 2"). The
+  screens wait for a pause in typing before asking. What is ticked in Archiving stays ticked across pages. The Expiring count in
+  the side bar comes with every documents request (`expiringCount`), counted over only what the person may view.
+- **Delete a document for good.** The **Delete** tag in the role grid is now live (it was reserved): its department, its tick.
+  `DELETE /api/documents/{id}` needs the Delete tag in that department **and the document's code typed** (`confirm`, also checked
+  by the server), then removes the document, every version and file row, the loose files, the archive zips and any kept previews
+  (files only after the records are gone). It cannot be undone. Audits keeps one "Deleted" row per column of the document,
+  its versions and files (names, dates, sizes, checksums), the activity log has `document.deleted`, and a deleted document is
+  still named by its code in Audits. No recycle bin: that was not asked for, and can be added.
+- **Any kind of file.** Uploads are no longer limited to PDF, Office, text and pictures. Any file with a plain extension (letters
+  and digits, up to 10) is kept, **except programs and scripts** (`documentator.uploads.blocked`: exe, msi, bat, cmd, com, scr,
+  vbs, js, ps1, sh, jar, dll, lnk, hta, reg, apk and a few more; refused as `blocked`). The kinds we know (PDF, Word, Excel,
+  PowerPoint, CSV, text, PNG, JPG, GIF, WebP) are still checked to really be that kind. Everything else is stored as plain
+  bytes and downloaded as `application/octet-stream`; files are always sent as attachments with `nosniff` and never shown as a
+  page, so an uploaded .html cannot run. A file with no extension is refused.
+- **Viewing.** Added the old Excel (.xls) with SheetJS (`resources/app/vendor/sheetjs.full.min.js`, version 0.20.3, Apache-2.0,
+  loaded only when one is opened; the small build cannot read .xls), and GIF and WebP pictures. **Old Word (.doc), PowerPoint
+  (.ppt, .pptx), OpenDocument (.odt, .odp, .ods) and .rtf** are shown by having the server turn them into a PDF with LibreOffice
+  (`DOCUMENTATOR_SOFFICE=/path/to/soffice`; `GET /api/files/{id}/preview`; same rights and audit as viewing; the PDF is made once and
+  kept in `previews/`, 2 minute limit, a private profile, a throwaway folder). **Off until LibreOffice is installed on the
+  server**: then the View button is simply not shown for those kinds (the session says `previews: false`). It is tested with a
+  stand-in program, **not with a real LibreOffice yet**. Every other kind has Download only.
+- **Folders, like a drive.** A folder holds documents and other folders, up to 12 levels. A document is in one folder, or at the top
+  level (`documents.folder_id`). Registering offers a **Folder** box (the folder being looked at to start with), Edit details can
+  move it, and **dragging** a document or folder onto a folder, or onto a step of the path above the list, moves it (a server
+  checks the rights; a folder cannot go inside itself, nor under a name already taken). Browsing shows one folder's folders and
+  documents; typing a search or picking an expiry filter looks through every folder and shows each result's folder.
+  **Physical location** stays a separate note on the document ("Cabinet 3, shelf B"), as before.
+- **Folders only organise.** Who may see or change a document is still its department's grid. **Everyone who may view documents
+  sees every folder's name** (the number beside it counts only documents they may see); whoever may **register** documents
+  (the Register tick, anywhere) may make, rename, move and remove folders. A folder is removed only when it is empty. Folder
+  changes are in Audits ("Folders"; a moved document shows the folder names before and after).
+- **Grid or list.** A switch on the Documents screen; the choice is kept in this browser.
+- **Not built:** folder permissions of their own (hiding a folder's name from people who cannot see its documents), a recycle
+  bin, dragging onto the side bar, moving several documents at once, a physical-location tree with its own rules.

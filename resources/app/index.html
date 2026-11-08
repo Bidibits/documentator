@@ -28,6 +28,10 @@
   <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
   <symbol id="i-archive" viewBox="0 0 24 24"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></symbol>
   <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
   <symbol id="i-alert-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></symbol>
 </svg>
 
@@ -75,7 +79,7 @@
     <div class="page-head">
       <div class="ph-t">
         <h1>Documents</h1>
-        <p>Every registered document with its versions and files. Select a row to open it.</p>
+        <p>Every registered document with its versions and files, kept in folders like a drive. Open a folder, or select a document to open it. Drag documents and folders into other folders.</p>
       </div>
       <div class="ph-a"><button class="btn primary" id="doc-new" type="button"><svg class="ic"><use href="#i-upload"></use></svg>Upload document</button></div>
     </div>
@@ -91,9 +95,16 @@
         <option value="expired">Expired</option>
         <option value="none">No expiry date</option>
       </select>
+      <div class="seg" id="doc-view" role="group" aria-label="Show as">
+        <button type="button" data-view="list" aria-label="List" title="List"><svg class="ic"><use href="#i-list"></use></svg></button>
+        <button type="button" data-view="grid" aria-label="Grid" title="Grid"><svg class="ic"><use href="#i-grid"></use></svg></button>
+      </div>
+      <button class="btn" id="doc-newfolder" type="button"><svg class="ic"><use href="#i-folder"></use></svg>New folder</button>
       <span class="count-note" id="doc-count"></span>
     </div>
+    <nav class="crumbs" id="doc-crumbs" aria-label="Folder"></nav>
     <div class="card tbl-card"><div class="tbl-scroll" id="doc-table"></div></div>
+    <div id="doc-pager"></div>
     </section>
 
     <section class="page" id="page-expiring" hidden>
@@ -105,6 +116,7 @@
       </div>
       <div class="toolbar"><span class="count-note" id="exp-count"></span></div>
       <div class="card tbl-card"><div class="tbl-scroll" id="exp-table"></div></div>
+      <div id="exp-pager"></div>
     </section>
 
     <section class="page" id="page-users" hidden>
@@ -175,6 +187,7 @@
       </div>
       <p class="arch-summary" id="arch-summary"></p>
       <div class="card tbl-card"><div class="tbl-scroll" id="arch-table"></div></div>
+      <div id="arch-pager"></div>
     </section>
 
     <section class="page" id="page-audits" hidden>
@@ -194,6 +207,7 @@
         <span class="count-note" id="au-count"></span>
       </div>
       <div class="card tbl-card"><div class="tbl-scroll" id="au-table-wrap"></div></div>
+      <div id="au-pager"></div>
     </section>
   </main>
   </div>

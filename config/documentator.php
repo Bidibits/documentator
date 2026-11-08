@@ -27,11 +27,19 @@ return [
     // a document is "expiring soon" this many days before its expiry date (the dates are the office's calendar days)
     'expiry_warning_days' => (int) env('DOCUMENTATOR_EXPIRY_WARNING_DAYS', 30),
 
+    // Converting Word, PowerPoint and similar files to PDF for the viewer needs LibreOffice on the server: the path to its
+    // soffice program (for example /usr/bin/soffice). Empty = no conversion, those files only have Download.
+    'soffice' => env('DOCUMENTATOR_SOFFICE'),
+
     'uploads' => [
         'max_files' => 10,
         'max_kilobytes' => 25 * 1024,
-        // By extension: the type a file is stored and downloaded as, and what the server may detect inside it. A name
-        // alone is never enough: the content must be one of these. The old Office formats (doc, xls, ppt) share one
+        // Any kind of file may be kept, except programs and scripts a computer could run by itself. Files are always
+        // stored under a name the server makes up and sent as downloads, never shown as a page.
+        'blocked' => ['exe', 'msi', 'bat', 'cmd', 'com', 'scr', 'pif', 'vbs', 'vbe', 'js', 'jse', 'wsf', 'wsh', 'ps1', 'psm1', 'jar', 'dll', 'lnk', 'hta', 'cpl', 'reg', 'msc', 'sh', 'app', 'apk', 'appx', 'msix'],
+        // By extension, for the kinds we know: the type a file is stored and downloaded as, and what the server may detect
+        // inside it. For these a name alone is never enough: the content must be one of these. Any other kind is kept as
+        // it is and downloaded as application/octet-stream. The old Office formats (doc, xls, ppt) share one
         // container, and the new ones (docx, xlsx, pptx) are zip files, so a detector can only say that much.
         'types' => [
             'pdf' => ['application/pdf', ['application/pdf']],
@@ -46,6 +54,8 @@ return [
             'png' => ['image/png', ['image/png']],
             'jpg' => ['image/jpeg', ['image/jpeg']],
             'jpeg' => ['image/jpeg', ['image/jpeg']],
+            'gif' => ['image/gif', ['image/gif']],
+            'webp' => ['image/webp', ['image/webp']],
         ],
     ],
 

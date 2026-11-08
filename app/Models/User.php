@@ -75,6 +75,8 @@ class User extends Authenticatable
         // what this person may do somewhere (only for the signed-in person: the screen uses it to show or hide)
         if ($withAccess) {
             $view['permissions'] = Access::permissions($this);
+            // can the server turn Word, PowerPoint and similar files into a PDF for the viewer? (needs LibreOffice)
+            $view['previews'] = is_string(config('documentator.soffice')) && config('documentator.soffice') !== '' && is_executable(config('documentator.soffice'));
         }
 
         return $view;

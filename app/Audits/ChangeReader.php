@@ -4,17 +4,18 @@ namespace App\Audits;
 
 use App\Auth\Access;
 use App\Exceptions\ApiError;
+use App\Models\Folder;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Reads audit_changes back for the Audits screen (the way KVNsys's Audit log screen does): newest first, at most LIMIT,
- * narrowed by table, record, person and days, with names standing in for ids wherever the record is still there.
+ * Reads audit_changes back for the Audits screen (the way KVNsys's Audit log screen does): newest first, one page of
+ * PER_PAGE at a time, narrowed by table, record, person and days, with names standing in for ids wherever the record is still there.
  */
 final class ChangeReader
 {
-    /** The newest this many changes are shown; the filters find older ones. */
-    public const LIMIT = 500;
+    /** Changes on one page, newest first; the pager reaches the older ones. */
+    public const PER_PAGE = 100;
 
     /** The tables the log holds changes to, and what a person calls each. */
     public const TABLES = [
@@ -25,6 +26,7 @@ final class ChangeReader
         'archive_rules' => 'Archive rules',
         'departments' => 'Departments',
         'roles' => 'Roles',
+        'folders' => 'Folders',
     ];
 
     /** What the screens call a column, where its database name does not say it the same way. */
@@ -32,6 +34,8 @@ final class ChangeReader
         'doc_type' => 'Type',
         'grants' => 'Access',
         'department_id' => 'Department',
+        'folder_id' => 'Folder',
+        'parent_id' => 'Inside folder',
         'location_note' => 'Physical location',
         'current_version_id' => 'Current version',
         'created_by' => 'Created by',
@@ -92,16 +96,18 @@ final class ChangeReader
             $query->where('occurred_at', '<', $filter['to']);
         }
 
-        $rows = $query->limit(self::LIMIT + 1)->get();
-        $more = $rows->count() > self::LIMIT;
+        $total = (clone $query)->count();
+        $pages = max(1, (int) ceil($total / self::PER_PAGE));
+        $page = min(max(1, (int) ($typed['page'] ?? 1)), $pages);
+        $rows = $query->forPage($page, self::PER_PAGE)->get();
         // newest save first, but the columns of one save in the order they were written, so each save reads top to bottom
-        $rows = $rows->take(self::LIMIT)->groupBy('save_id')->flatMap(fn ($save) => $save->reverse()->values())->values();
+        $rows = $rows->groupBy('save_id')->flatMap(fn ($save) => $save->reverse()->values())->values();
 
         $names = self::names($rows);
 
         return [
             'entries' => $rows->map(fn ($r) => self::entry($r, $names))->values()->all(),
-            'more' => $more,
+            'page' => $page, 'pages' => $pages, 'total' => $total, 'per' => self::PER_PAGE,
             'people' => self::people(),
             'tables' => collect(self::TABLES)->map(fn ($label, $table) => ['table' => $table, 'label' => $label])->values()->all(),
         ];
@@ -186,11 +192,29 @@ final class ChangeReader
 
         $departments = DB::table('departments')->whereIn('id', array_unique(array_merge($ids('departments'), $refs('department_id'))))->pluck('name', 'id')
             ->mapWithKeys(fn ($name, $id) => [(string) $id => $name])->all();
+        // folders by their full name; one that has been removed is still known by the name its log rows recorded
+        $folderPaths = Folder::paths();
+        $folderIds = array_unique(array_merge($ids('folders'), $refs('folder_id'), $refs('parent_id')));
+        $goneFolders = array_values(array_diff(array_map('strval', $folderIds), array_map('strval', array_keys($folderPaths))));
+        $folders = collect($folderPaths)->mapWithKeys(fn ($path, $id) => [(string) $id => $path])->all();
+        if ($goneFolders) {
+            foreach (DB::table('audit_changes')->where('table_name', 'folders')->where('column_name', 'name')->whereIn('record_id', $goneFolders)->orderBy('id')->get(['record_id', 'value_before', 'value_after']) as $row) {
+                $folders[$row->record_id] = $row->value_after ?? $row->value_before;
+            }
+        }
         $roleNames = DB::table('roles')->whereIn('id', $ids('roles'))->pluck('name', 'id')->mapWithKeys(fn ($name, $id) => [(string) $id => $name])->all();
         $ruleIds = $ids('archive_rules');
         $rules = $ruleIds ? DB::table('archive_rules')->whereIn('id', $ruleIds)->pluck('kind', 'id')
             ->mapWithKeys(fn ($kind, $id) => [(string) $id => $kind === 'idle' ? 'Not opened for a while' : 'Replaced by a newer version'])->all() : [];
         $codes = $documentIds ? DB::table('documents')->whereIn('id', array_unique($documentIds))->pluck('code', 'id')->all() : [];
+        // a document that has been deleted is still known by the code its log rows recorded
+        $gone = array_values(array_diff(array_map('strval', array_unique($documentIds)), array_map('strval', array_keys($codes))));
+        if ($gone) {
+            $logged = DB::table('audit_changes')->where('table_name', 'documents')->where('column_name', 'code')->whereIn('record_id', $gone)->orderBy('id')->get(['record_id', 'value_before', 'value_after']);
+            foreach ($logged as $row) {
+                $codes[$row->record_id] = $row->value_after ?? $row->value_before;
+            }
+        }
         $users = $userIds ? DB::table('users')->whereIn('id', array_unique($userIds))->get(['id', 'name', 'username'])
             ->mapWithKeys(fn ($u) => [(string) $u->id => $u->name ?: $u->username])->all() : [];
         $versions = $versionRows->mapWithKeys(fn ($v) => [(string) $v->id => ($codes[$v->document_id] ?? 'Document '.$v->document_id).' · Ver '.$v->rev_no])->all();
@@ -204,7 +228,9 @@ final class ChangeReader
                 'archive_rules' => $rules,
                 'departments' => $departments,
                 'roles' => $roleNames,
+                'folders' => $folders,
             ],
+            'folders' => $folders,
             'users' => $users,
             'rules' => $rules,
             'departments' => $departments,
@@ -253,6 +279,7 @@ final class ChangeReader
         return match (true) {
             $column === 'document_id' => $names['documents'][$value] ?? $value,
             $column === 'department_id' => $names['departments'][$value] ?? $value,
+            $column === 'folder_id', $column === 'parent_id' => $names['folders'][$value] ?? $value,
             $column === 'version_id', $column === 'current_version_id' => $names['versions'][$value] ?? $value,
             $column === 'role' => Access::label($value),
             in_array($column, self::YES_NO, true) => $value === 'true' ? 'Yes' : ($value === 'false' ? 'No' : $value),

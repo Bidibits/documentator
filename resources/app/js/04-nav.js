@@ -21,7 +21,8 @@ function showPage(name){
   $("#main").scrollTop = 0;
   window.scrollTo(0, 0);
   closeNav();
-  if(name === "documents" || name === "expiring") loadDocuments();
+  if(name === "documents") loadDocuments();
+  if(name === "expiring") loadExpiring(1);
   if(name === "audits") loadAudits();
   if(name === "archiving") loadArchive();
   if(name === "users") loadUsers();

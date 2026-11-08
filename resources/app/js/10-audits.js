@@ -1,11 +1,12 @@
 /* ---------- the Audits panel ---------- */
-// Every recorded change, newest first (the newest 500 that match). Names stand in for ids. Choosing a record's name shows
+// Every recorded change, newest first, 100 to a page. Names stand in for ids. Choosing a record's name shows
 // only that record's history, the way KVNsys's Audit log does.
-const audits = {filters: {table: "", person: "", from: "", to: "", record: "", recordName: ""}, data: null, token: 0};
+const audits = {filters: {table: "", person: "", from: "", to: "", record: "", recordName: ""}, data: null, token: 0, page: 1};
 
 function clearAudits(){
   audits.filters = {table: "", person: "", from: "", to: "", record: "", recordName: ""};
-  audits.data = null; audits.token++;
+  audits.data = null; audits.token++; audits.page = 1;
+  $("#au-pager").replaceChildren();
   $("#au-table-wrap").replaceChildren();
   $("#au-count").textContent = "";
   for(const id of ["#au-table", "#au-person"]) $(id).replaceChildren(h("option", {value: ""}, id === "#au-table" ? "All tables" : "Everyone"));
@@ -13,15 +14,17 @@ function clearAudits(){
   $("#au-one").hidden = true;
 }
 
-async function loadAudits(){
+async function loadAudits(page){
   const token = ++audits.token;
+  if(page) audits.page = page;
   const f = audits.filters;
-  const query = Object.entries({table: f.table, record: f.record, person: f.person, from: f.from, to: f.to})
+  const query = Object.entries({table: f.table, record: f.record, person: f.person, from: f.from, to: f.to, page: audits.page > 1 ? String(audits.page) : ""})
     .filter(([, v]) => v).map(([k, v]) => k + "=" + encodeURIComponent(v)).join("&");
   try{
     const data = await api("GET", "/api/audits" + (query ? "?" + query : ""));
     if(token !== audits.token) return;
     audits.data = data;
+    audits.page = data.page;
     fillAuditChoices();
     renderAudits();
   }catch(e){
@@ -51,13 +54,14 @@ function fillAuditChoices(){
 }
 
 function renderAudits(){
-  const {entries, more} = audits.data;
+  const {entries, total} = audits.data;
   const f = audits.filters;
   $("#au-one").hidden = !f.record;
   $("#au-one").replaceChildren(...(f.record ? [
     "Only the history of " + (f.recordName || "record " + f.record) + " ",
-    h("button", {class: "btn sm", type: "button", onclick: () => { f.record = ""; f.recordName = ""; loadAudits(); }}, "Show all")] : []));
-  $("#au-count").textContent = entries.length === 0 ? "" : (more ? "Newest " + entries.length + " shown; narrow the filters to see older ones" : plural(entries.length, "change"));
+    h("button", {class: "btn sm", type: "button", onclick: () => { f.record = ""; f.recordName = ""; loadAudits(1); }}, "Show all")] : []));
+  $("#au-count").textContent = total === 0 ? "" : plural(total, "change");
+  renderPager($("#au-pager"), audits.data, p => loadAudits(p));
 
   if(entries.length === 0){
     $("#au-table-wrap").replaceChildren(emptyBlock("No changes",
@@ -77,7 +81,7 @@ function renderAudits(){
       h("td", {class: "nowrap"}, e.tableLabel),
       h("td", {class: "wrap"}, e.record
         ? h("button", {class: "au-link", type: "button", title: "Show only this record's history", onclick: () => {
-            audits.filters.table = e.table; audits.filters.record = e.recordId; audits.filters.recordName = e.record; loadAudits();
+            audits.filters.table = e.table; audits.filters.record = e.recordId; audits.filters.recordName = e.record; loadAudits(1);
           }}, e.record)
         : h("span", {class: "muted-cell"}, "(gone) " + e.recordId)),
       h("td", {class: "nowrap"}, e.columnLabel),
@@ -95,7 +99,7 @@ for(const [id, key] of [["#au-table", "table"], ["#au-person", "person"], ["#au-
   $(id).addEventListener("change", event => {
     audits.filters[key] = event.target.value;
     if(key === "table"){ audits.filters.record = ""; audits.filters.recordName = ""; }
-    loadAudits();
+    loadAudits(1);
   });
 }
 $("#au-refresh").addEventListener("click", () => loadAudits());

@@ -1,59 +1,58 @@
 /* ---------- the Archiving panel ---------- */
-// Old versions (never a current one), the most recently opened first. Tick some and archive them by hand, or take
-// archived ones back out. One request per version, so a long run shows its progress and one failure stops nothing else.
-const arch = {rows: [], summary: null, filter: "all", query: "", selected: new Set(), loaded: false, busy: false,
-              rules: null, edits: {}, lastRun: null, schedule: "", dueTotal: 0};
+// Old versions (never a current one), the most recently opened first, 50 to a page; the server searches and filters. Tick some
+// and archive them by hand, or take archived ones back out. What is ticked stays ticked across pages. One request per version,
+// so a long run shows its progress and one failure stops nothing else.
+const arch = {rows: [], summary: null, filter: "all", query: "", selected: new Map(), loaded: false, busy: false,
+              page: 1, pages: 1, total: 0, per: 50, rules: null, edits: {}, lastRun: null, schedule: "", dueTotal: 0};
+let archToken = 0;
 
 function clearArchive(){
-  arch.rows = []; arch.summary = null; arch.filter = "all"; arch.query = ""; arch.selected = new Set(); arch.loaded = false;
+  arch.rows = []; arch.summary = null; arch.filter = "all"; arch.query = ""; arch.selected = new Map(); arch.loaded = false;
+  arch.page = 1; arch.pages = 1; arch.total = 0; archToken++;
   arch.rules = null; arch.edits = {}; arch.lastRun = null; arch.dueTotal = 0;
   $("#arch-rules").replaceChildren();
   $("#arch-table").replaceChildren();
+  $("#arch-pager").replaceChildren();
   $("#arch-count").textContent = ""; $("#arch-summary").textContent = "";
   $("#arch-q").value = ""; $("#arch-filter").value = "all";
   syncArchiveButtons();
 }
 
-async function loadArchive(){
+async function loadArchive(page){
   // the rules work on every department at once, so only an administrator sees them
   $("#arch-rules").hidden = !can("documentator.archive.manage");
   if(can("documentator.archive.manage")) loadRules();
+  const token = ++archToken;
+  if(page) arch.page = page;
+  const params = new URLSearchParams({page: String(arch.page), filter: arch.filter});
+  if(arch.query.trim()) params.set("q", arch.query.trim());
   try{
-    const data = await api("GET", "/api/archive");
+    const data = await api("GET", "/api/archive?" + params.toString());
+    if(token !== archToken) return;
     arch.rows = data.versions || [];
     arch.summary = data.summary;
+    arch.page = data.page; arch.pages = data.pages; arch.total = data.total; arch.per = data.per;
     arch.loaded = true;
-    // what was ticked stays ticked only while it is still in the list
-    const ids = new Set(arch.rows.map(r => r.id));
-    arch.selected = new Set([...arch.selected].filter(id => ids.has(id)));
     renderArchive();
   }catch(e){
-    if(e.status === 401) return;
+    if(token !== archToken || e.status === 401) return;
     $("#arch-table").replaceChildren(emptyBlock("Could not load the archive", errorWords(e)));
     $("#arch-count").textContent = ""; $("#arch-summary").textContent = "";
+    $("#arch-pager").replaceChildren();
   }
 }
 
-function archiveShown(){
-  const words = arch.query.toLowerCase().split(/\s+/).filter(Boolean);
-  return arch.rows.filter(r => {
-    if(arch.filter === "live" && r.archived) return false;
-    if(arch.filter === "archived" && !r.archived) return false;
-    const hay = [r.code, r.title, "ver " + r.rev, r.changeNote].join(" \n ").toLowerCase();
-    return words.every(w => hay.includes(w));
-  });
-}
-
 function renderArchive(){
-  const shown = archiveShown();
+  const shown = arch.rows;
   const sum = arch.summary;
-  $("#arch-count").textContent = arch.rows.length === 0 ? "" :
-    shown.length === arch.rows.length ? plural(arch.rows.length, "version") : shown.length + " of " + arch.rows.length;
+  const narrowed = arch.query.trim() !== "" || arch.filter !== "all";
+  $("#arch-count").textContent = arch.total === 0 ? "" : narrowed ? plural(arch.total, "version") + " found" : plural(arch.total, "version");
   $("#arch-summary").textContent = !sum || sum.archived === 0 ? "" :
     plural(sum.archived, "version") + " archived: " + fmtSize(sum.archivedOriginalBytes) + " of files packed into " + fmtSize(sum.archivedZipBytes) +
     ". PDFs, Word, Excel, pictures and the like are already compressed, so zipping them saves little; text and CSV shrink a lot.";
+  renderPager($("#arch-pager"), arch, page => loadArchive(page));
 
-  if(arch.rows.length === 0){
+  if(arch.total === 0 && !narrowed){
     $("#arch-table").replaceChildren(emptyBlock("No old versions yet",
       "Only versions that have been replaced by a newer one can be archived. Upload a new version of a document and its earlier one will appear here."));
     syncArchiveButtons();
@@ -66,17 +65,17 @@ function renderArchive(){
   }
 
   const th = (label, cls) => h("th", {scope: "col", class: cls}, label);
-  const all = h("input", {type: "checkbox", id: "arch-all", "aria-label": "Select every version shown"});
+  const all = h("input", {type: "checkbox", id: "arch-all", "aria-label": "Select every version on this page"});
   all.checked = shown.every(r => arch.selected.has(r.id));
   all.addEventListener("change", () => {
-    for(const r of shown){ if(all.checked) arch.selected.add(r.id); else arch.selected.delete(r.id); }
+    for(const r of shown){ if(all.checked) arch.selected.set(r.id, r); else arch.selected.delete(r.id); }
     renderArchive();
   });
   const when = at => at ? h("td", {class: "nowrap", title: fmtStamp(at)}, fmtStamp(at).split(",")[0]) : h("td", {class: "muted-cell"}, "never");
   const rows = shown.map(r => {
     const box = h("input", {type: "checkbox", "aria-label": "Select " + r.code + " Ver " + r.rev});
     box.checked = arch.selected.has(r.id);
-    box.addEventListener("change", () => { if(box.checked) arch.selected.add(r.id); else arch.selected.delete(r.id); syncArchiveButtons(); all.checked = shown.every(x => arch.selected.has(x.id)); });
+    box.addEventListener("change", () => { if(box.checked) arch.selected.set(r.id, r); else arch.selected.delete(r.id); syncArchiveButtons(); all.checked = shown.every(x => arch.selected.has(x.id)); });
     return h("tr", {class: box.checked ? "sel" : ""},
       h("td", {class: "ck"}, box),
       h("td", {class: "mono"}, h("span", {class: "tag"}, r.code)),
@@ -96,7 +95,7 @@ function renderArchive(){
 }
 
 // the two buttons act on what is ticked and fits them: only live versions can be archived, only archived ones taken out
-function ticked(archived){ return arch.rows.filter(r => arch.selected.has(r.id) && r.archived === archived); }
+function ticked(archived){ return [...arch.selected.values()].filter(r => r.archived === archived); }
 function syncArchiveButtons(){
   const live = ticked(false).length, packed = ticked(true).length;
   $("#arch-do").disabled = arch.busy || live === 0;
@@ -151,6 +150,7 @@ function confirmArchive(kind){
     const result = await runArchive(kind, versions, progress);
     if(!result) return;
     closeModal();
+    arch.selected = new Map();   // what was ticked has changed state
     await Promise.all([loadArchive(), loadDocuments()]);
     if(result.problems.length === 0){
       toast((archiving ? "Archived " : "Took out ") + plural(result.done, "version"));
@@ -163,8 +163,13 @@ function confirmArchive(kind){
 
 $("#arch-do").addEventListener("click", () => confirmArchive("archive"));
 $("#arch-undo").addEventListener("click", () => confirmArchive("restore"));
-$("#arch-q").addEventListener("input", event => { arch.query = event.target.value; renderArchive(); });
-$("#arch-filter").addEventListener("change", event => { arch.filter = event.target.value; renderArchive(); });
+let archTimer = null;
+$("#arch-q").addEventListener("input", event => {
+  arch.query = event.target.value;
+  clearTimeout(archTimer);
+  archTimer = setTimeout(() => loadArchive(1), 250);   // the server searches; wait for a pause in the typing
+});
+$("#arch-filter").addEventListener("change", event => { arch.filter = event.target.value; loadArchive(1); });
 
 /* ---------- the rules: archive by themselves, every night ---------- */
 const RULE_TEXT = {
@@ -285,6 +290,7 @@ function confirmRun(){
         progress.textContent = errorWords(e);
         return;
       }finally{ arch.busy = false; }
+      arch.selected = new Map();
       await Promise.all([loadArchive(), loadDocuments()]);
     }, "Run now");
 }

@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuditController;
 use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\FileController;
+use App\Http\Controllers\Api\FolderController;
 use App\Http\Controllers\Api\PasswordController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SessionController;
@@ -32,15 +33,26 @@ Route::middleware('documentator.signed-in')->group(function () {
         Route::get('documents', [DocumentController::class, 'index']);
         Route::get('documents/{document}', [DocumentController::class, 'show'])->whereNumber('document');
     });
+    // folders: anyone who may view documents sees them; whoever may register documents may keep them
+    Route::get('folders', [FolderController::class, 'index'])->middleware('documentator.can:documentator.document.view');
+    Route::middleware('documentator.can:documentator.document.create')->group(function () {
+        Route::post('folders', [FolderController::class, 'store']);
+        Route::patch('folders/{folder}', [FolderController::class, 'update'])->whereNumber('folder');
+        Route::delete('folders/{folder}', [FolderController::class, 'destroy'])->whereNumber('folder');
+    });
     Route::middleware('documentator.can:documentator.document.create')->group(function () {
         Route::get('documents/suggest-code', [DocumentController::class, 'suggestCode']);
         Route::post('documents', [DocumentController::class, 'store']);
     });
     Route::patch('documents/{document}', [DocumentController::class, 'update'])
         ->whereNumber('document')->middleware('documentator.can:documentator.version.create');
+    Route::delete('documents/{document}', [DocumentController::class, 'destroy'])
+        ->whereNumber('document')->middleware('documentator.can:documentator.document.delete');
     Route::post('documents/{document}/versions', [DocumentController::class, 'storeVersion'])
         ->whereNumber('document')->middleware('documentator.can:documentator.version.create');
 
+    Route::get('files/{file}/preview', [FileController::class, 'preview'])
+        ->whereNumber('file')->middleware('documentator.can:documentator.file.download');
     Route::get('files/{file}', [FileController::class, 'download'])
         ->whereNumber('file')->middleware('documentator.can:documentator.file.download');
 

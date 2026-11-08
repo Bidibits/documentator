@@ -12,10 +12,13 @@ use App\Models\Department;
 use App\Models\Document;
 use App\Models\DocumentFile;
 use App\Models\DocumentVersion;
+use App\Models\Folder;
 use App\Models\User;
 use App\Support\AuditLog;
 use App\Support\ChangeLog;
+use Carbon\Carbon;
 use Closure;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -30,18 +33,54 @@ use Throwable;
 class DocumentController extends Controller
 {
     /** The columns of a new document that go into the change log (its dates are added as typed). */
-    private const LOGGED_DOCUMENT_COLUMNS = ['code', 'title', 'doc_type', 'department_id', 'description', 'location_note', 'current_version_id', 'created_by', 'updated_by'];
+    private const LOGGED_DOCUMENT_COLUMNS = ['code', 'title', 'doc_type', 'department_id', 'folder_id', 'description', 'location_note', 'current_version_id', 'created_by', 'updated_by'];
 
-    /** The register: newest first, plus the departments to choose from and the types already in use (the form offers them). */
+    /** Documents on a page of the register unless the person asks for more. */
+    private const PER_PAGE = 25;
+
+    /**
+     * One page of the register (newest first, or soonest expiry first), narrowed by what was typed (q: every word must be
+     * in the code, title, type, department or location) and by expiry status, plus the departments to choose from, the types
+     * already in use and how many documents are expired or expiring soon (the side bar's count). Only what the person may view.
+     */
     public function index(Request $request): JsonResponse
     {
+        $f = $request->validate([
+            'q' => ['nullable', 'string', 'max:200'],
+            'status' => ['nullable', Rule::in(['attention', 'expiring', 'expired', 'active', 'none'])],
+            'sort' => ['nullable', Rule::in(['new', 'expiry'])],
+            'folder' => ['nullable', 'regex:/^(root|\d+)$/'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per' => ['nullable', 'integer', Rule::in([25, 50, 100])],
+        ]);
         $grants = Access::grants(SessionUser::resolve($request));
-        $query = Document::withAccessDates()->with(['currentVersion.files', 'creator', 'department']);
-        $grants->scope($query, 'documents.department_id', Access::TAGS['view']);   // only the departments this person may see
-        $documents = $query->orderByDesc('id')->get();
+
+        $base = Document::query();
+        $grants->scope($base, 'documents.department_id', Access::TAGS['view']);   // only the departments this person may see
+        $this->words($base, (string) ($f['q'] ?? ''));
+        $this->expiryFilter($base, (string) ($f['status'] ?? ''));
+        if (isset($f['folder'])) {
+            $f['folder'] === 'root' ? $base->whereNull('documents.folder_id') : $base->where('documents.folder_id', (int) $f['folder']);
+        }
+
+        $per = (int) ($f['per'] ?? self::PER_PAGE);
+        $total = (clone $base)->count();
+        $pages = max(1, (int) ceil($total / $per));
+        $page = min((int) ($f['page'] ?? 1), $pages);
+
+        $query = $base->withAccessDates()->with(['currentVersion.files', 'creator', 'department']);
+        ($f['sort'] ?? 'new') === 'expiry' ? $query->orderBy('documents.expires_on')->orderBy('documents.code') : $query->orderByDesc('documents.id');
+        $documents = $query->forPage($page, $per)->get();
+        $paths = Folder::paths();
+
+        $attention = Document::query();
+        $grants->scope($attention, 'documents.department_id', Access::TAGS['view']);
+        $this->expiryFilter($attention, 'attention');
 
         return response()->json([
-            'documents' => $documents->map(fn (Document $d) => $d->view(false, $grants))->all(),
+            'documents' => $documents->map(fn (Document $d) => $d->view(false, $grants, $paths))->all(),
+            'page' => $page, 'pages' => $pages, 'total' => $total, 'per' => $per,
+            'expiringCount' => $attention->count(),
             // the departments this person may register a document in (switched-off ones are not offered)
             'departments' => Department::query()->where('active', true)->orderBy('name')->get(['id', 'name'])
                 ->filter(fn ($d) => $grants->can(Access::TAGS['register'], $d->id))
@@ -54,6 +93,39 @@ class DocumentController extends Controller
             'canEditNone' => $grants->can(Access::TAGS['update'], null),
             'types' => $this->distinct('doc_type', $grants),
         ]);
+    }
+
+    /** Every typed word must be somewhere in the code, title, type, location or department name. */
+    private function words(Builder $query, string $text): void
+    {
+        foreach (preg_split('/\s+/', trim($text), -1, PREG_SPLIT_NO_EMPTY) ?: [] as $word) {
+            $like = '%'.addcslashes($word, '\\%_').'%';
+            $query->where(function ($where) use ($like) {
+                foreach (['documents.code', 'documents.title', 'documents.doc_type', 'documents.location_note'] as $column) {
+                    $where->orWhereRaw($column." like ? escape '\\'", [$like]);
+                }
+                $where->orWhereIn('documents.department_id', Department::query()->select('id')->whereRaw("name like ? escape '\\'", [$like]));
+            });
+        }
+    }
+
+    /** Narrows to one expiry status by the office's calendar (the same rules as Document::expiry()). */
+    private function expiryFilter(Builder $query, string $status): void
+    {
+        if ($status === '') {
+            return;
+        }
+        $today = Carbon::today(config('documentator.timezone'));
+        $soon = $today->copy()->addDays((int) config('documentator.expiry_warning_days'))->format('Y-m-d');
+        $day = $today->format('Y-m-d');
+
+        match ($status) {
+            'none' => $query->whereNull('documents.expires_on'),
+            'expired' => $query->whereDate('documents.expires_on', '<', $day),
+            'expiring' => $query->whereDate('documents.expires_on', '>=', $day)->whereDate('documents.expires_on', '<=', $soon),
+            'active' => $query->whereDate('documents.expires_on', '>', $soon),
+            'attention' => $query->whereDate('documents.expires_on', '<=', $soon),   // expired or expiring (a null date never matches)
+        };
     }
 
     public function suggestCode(): JsonResponse
@@ -83,6 +155,7 @@ class DocumentController extends Controller
             'title' => ['required', 'string', 'max:200'],
             'doc_type' => ['nullable', 'string', 'max:64'],
             'department_id' => ['nullable', 'integer', Rule::exists('departments', 'id')->where('active', true)],
+            'folder_id' => ['nullable', 'integer', 'exists:folders,id'],
             'description' => ['nullable', 'string', 'max:2000'],
             'issued_on' => ['nullable', 'date_format:Y-m-d'],
             'expires_on' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:issued_on'],
@@ -103,6 +176,7 @@ class DocumentController extends Controller
                     'title' => $data['title'],
                     'doc_type' => $data['doc_type'] ?? null,
                     'department_id' => $data['department_id'] ?? null,
+                    'folder_id' => $data['folder_id'] ?? null,
                     'description' => $data['description'] ?? null,
                     'issued_on' => $data['issued_on'] ?? null,
                     'expires_on' => $data['expires_on'] ?? null,
@@ -165,6 +239,7 @@ class DocumentController extends Controller
             'title' => ['sometimes', 'required', 'string', 'max:200'],
             'doc_type' => ['sometimes', 'nullable', 'string', 'max:64'],
             'department_id' => ['sometimes', 'nullable', 'integer', Rule::exists('departments', 'id')],
+            'folder_id' => ['sometimes', 'nullable', 'integer', 'exists:folders,id'],
             'description' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'issued_on' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
             'expires_on' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
@@ -173,8 +248,10 @@ class DocumentController extends Controller
         if (isset($data['title']) && trim($data['title']) === '') {
             throw new ApiError(422, 'invalid', ['field' => 'title']);
         }
-        if (isset($data['department_id'])) {
-            $data['department_id'] = (int) $data['department_id'];   // a form sends it as text
+        foreach (['department_id', 'folder_id'] as $key) {
+            if (isset($data[$key])) {
+                $data[$key] = (int) $data[$key];   // a form sends it as text
+            }
         }
 
         if (array_key_exists('department_id', $data) && $data['department_id'] !== $document->department_id) {
@@ -228,6 +305,7 @@ class DocumentController extends Controller
             'title' => $document->title,
             'doc_type' => $document->doc_type,
             'department_id' => $document->department_id,
+            'folder_id' => $document->folder_id,
             'description' => $document->description,
             'issued_on' => $document->issued_on?->format('Y-m-d'),
             'expires_on' => $document->expires_on?->format('Y-m-d'),
@@ -309,6 +387,58 @@ class DocumentController extends Controller
         return response()->json(['document' => $document->view(true, $grants)], 201);
     }
 
+    /**
+     * Deletes a document for good: its details, every version and every file, including the zips of archived versions.
+     * Needs the Delete tag in its department, and the document's code typed as confirm (so it cannot happen by a stray
+     * request). Audits keeps what each row held, and the activity log notes it; the files themselves cannot come back.
+     */
+    public function destroy(Request $request, Document $document): JsonResponse
+    {
+        $user = SessionUser::resolve($request);
+        if (! Access::grants($user)->can(Access::TAGS['delete'], $document->department_id)) {
+            throw ApiError::forbidden();
+        }
+        $data = $request->validate(['confirm' => ['required', 'string']]);
+        if (mb_strtolower(trim($data['confirm'])) !== mb_strtolower($document->code)) {
+            throw new ApiError(422, 'invalid', ['field' => 'confirm']);
+        }
+
+        $document->load('versions.files');
+        $paths = [];
+
+        DB::transaction(function () use ($document, $user, &$paths) {
+            foreach ($document->versions as $version) {
+                foreach ($version->files as $file) {
+                    $paths[] = $file->storage_path;
+                    ChangeLog::deleted('document_files', $file->id, Arr::only($file->getAttributes(), ['version_id', 'original_name', 'mime', 'size', 'sha256', 'sort_order']), $user);
+                }
+                if ($version->archive_path) {
+                    $paths[] = $version->archive_path;
+                }
+                ChangeLog::deleted('document_versions', $version->id, [
+                    'document_id' => $document->id, 'rev_no' => $version->rev_no, 'change_note' => $version->change_note,
+                    'issued_on' => $version->issued_on?->format('Y-m-d'), 'expires_on' => $version->expires_on?->format('Y-m-d'),
+                    'created_by' => $version->created_by, 'archived_at' => $version->archived_at?->utc()->format('Y-m-d H:i:s'),
+                ], $user);
+            }
+            ChangeLog::deleted('documents', $document->id, Arr::only($document->getAttributes(), ['code', 'title', 'doc_type', 'department_id', 'description', 'location_note', 'created_by'])
+                + ['issued_on' => $document->issued_on?->format('Y-m-d'), 'expires_on' => $document->expires_on?->format('Y-m-d')], $user);
+
+            DocumentFile::whereIn('version_id', $document->versions->pluck('id'))->delete();
+            DocumentVersion::where('document_id', $document->id)->delete();
+            $document->delete();
+            AuditLog::record($user, 'document.deleted', $document->title, entityType: 'document', entityId: $document->code);
+        });
+
+        // only once the records are gone: a failure above leaves the files where they were
+        $this->discard($paths);
+        Storage::disk('local')->deleteDirectory('documents/'.$document->id);
+        Storage::disk('local')->deleteDirectory('archive/'.$document->id);
+        Storage::disk('local')->deleteDirectory('previews/'.$document->id);
+
+        return response()->json(['ok' => true]);
+    }
+
     /** @return array<string, array<int, mixed>> the rules for the files of a registration or a new version */
     private function fileRules(): array
     {
@@ -326,9 +456,9 @@ class DocumentController extends Controller
     private function keep(DocumentVersion $version, UploadedFile $upload, int $order, User $user): string
     {
         $extension = $this->extensionOf($upload);
-        // stored as what its extension says it is (the content was already checked to fit): a docx the detector
-        // called "zip" is still a docx
-        $mime = config("documentator.uploads.types.{$extension}.0");
+        // stored as what its extension says it is (a known kind's content was already checked to fit: a docx the detector
+        // called "zip" is still a docx); any other kind is kept as plain bytes
+        $mime = config("documentator.uploads.types.{$extension}.0") ?? 'application/octet-stream';
         $sha256 = hash_file('sha256', $upload->getRealPath());
         $path = $upload->storeAs('documents/'.$version->document_id, Str::uuid().'.'.$extension, 'local');
         if ($path === false) {
@@ -361,19 +491,29 @@ class DocumentController extends Controller
     private function allowedType(): Closure
     {
         return function (string $attribute, mixed $file, Closure $fail): void {
-            if (! $file instanceof UploadedFile || $this->extensionOf($file) === null) {
+            if (! $file instanceof UploadedFile) {
+                $fail('type');
+            } elseif (in_array(Str::lower($file->getClientOriginalExtension()), config('documentator.uploads.blocked'), true)) {
+                $fail('blocked');   // a program or script
+            } elseif ($this->extensionOf($file) === null) {
                 $fail('type');
             }
         };
     }
 
-    /** The file's extension when it is an allowed one and the content fits it, else null. */
+    /**
+     * The file's extension when it may be kept, else null: it must have a plain one (letters and digits, up to 10), not
+     * be a program or script, and, for the kinds we know (PDF, Word, Excel, pictures...), really be that kind.
+     */
     private function extensionOf(UploadedFile $file): ?string
     {
         $extension = Str::lower($file->getClientOriginalExtension());
-        $allowed = config("documentator.uploads.types.{$extension}");
+        if (preg_match('/^[a-z0-9]{1,10}$/', $extension) !== 1 || in_array($extension, config('documentator.uploads.blocked'), true)) {
+            return null;
+        }
+        $known = config("documentator.uploads.types.{$extension}");
 
-        return $allowed !== null && in_array((string) $file->getMimeType(), $allowed[1], true) ? $extension : null;
+        return $known === null || in_array((string) $file->getMimeType(), $known[1], true) ? $extension : null;
     }
 
     /** The name as shown and offered for download: no folders, no control characters, not too long. */

@@ -1,7 +1,7 @@
 /* ---------- upload a document ---------- */
 // The code is only suggested (TSI-YY-MM-DD-NN): the person may keep it, edit it or type anything else.
-const FILE_TYPES = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.png,.jpg,.jpeg";
-const FILE_TYPES_WORDS = "PDF, Word, Excel, PowerPoint, CSV, text, PNG or JPG";
+// Any kind of file is kept (programs and scripts are refused); the server checks the ones it knows, like a PDF that must be a PDF.
+const FILE_TYPES_WORDS = "Any kind of file except programs and scripts";
 
 // "lease_agreement_final.pdf" -> "lease agreement final": the title offered for a chosen file
 function titleFromFile(name){
@@ -33,8 +33,9 @@ async function openUpload(){
   const expires = h("input", {id: "fld-expires_on", name: "expires_on", type: "date"});
   const location = h("input", {id: "fld-location_note", name: "location_note", type: "text", maxlength: "200", autocomplete: "off"});
   const description = h("textarea", {id: "fld-description", name: "description", maxlength: "2000"});
-  const files = h("input", {id: "fld-files", name: "files", type: "file", multiple: true, accept: FILE_TYPES});
+  const files = h("input", {id: "fld-files", name: "files", type: "file", multiple: true});
   const picked = h("ul", {class: "picked"});
+  const folder = folderSelect("fld-folder_id", docs.folder);   // the folder being looked at, to start with
 
   const syncSuggestion = () => { useSuggested.hidden = !suggested || code.value === suggested; };
   code.addEventListener("input", syncSuggestion);
@@ -61,10 +62,11 @@ async function openUpload(){
     h("div", {class: "grid2"},
       formField("doc_type", "Type", type, "Pick one from the list, or type a new kind."),
       formField("department_id", "Department", department, docs.departments.length ? "Which department this belongs to. You can only register in the departments your role allows." : docs.canRegisterNone ? "No departments to choose from yet." : "Your role cannot register a document in any department.")),
+    formField("folder_id", "Folder", folder, "Where the document is kept in the app, like a folder on a drive. You can drag it to another folder later."),
     h("div", {class: "grid2"},
       formField("issued_on", "Issued on", issued),
       formField("expires_on", "Expires on", expires, "Leave empty if it does not expire.")),
-    formField("location_note", "Physical location", location, "Where the paper copy is kept, for example Cabinet 3, shelf B. Just a note for now."),
+    formField("location_note", "Physical location", location, "Where the paper copy is kept, for example Cabinet 3, shelf B. Just a note."),
     formField("description", "Description", description));
 
   const save = async () => {
@@ -79,7 +81,7 @@ async function openUpload(){
     const form = new FormData();
     form.append("code", codeText);
     form.append("title", title.value.trim());
-    for(const [key, input] of [["doc_type", type], ["department_id", department], ["issued_on", issued], ["expires_on", expires],
+    for(const [key, input] of [["doc_type", type], ["department_id", department], ["folder_id", folder], ["issued_on", issued], ["expires_on", expires],
                                ["location_note", location], ["description", description]]){
       if(input.value.trim() !== "") form.append(key, input.value.trim());
     }
@@ -120,8 +122,10 @@ function uploadError(e, fields, takeSuggestion, fail){
   }
   if(e.code === "invalid"){
     const field = e.data.field;
-    if(field === "files") return fail(e.data.message === "type"
-      ? "One of the files is not an accepted kind. Use " + FILE_TYPES_WORDS + " files, and keep the file's own extension."
+    if(field === "files") return fail(e.data.message === "blocked"
+      ? "Programs and scripts (like .exe, .bat, .js or .sh) are not accepted."
+      : e.data.message === "type"
+      ? "One of the files has no proper extension, or is not what its extension says (for example a .pdf that is not a PDF)."
       : "A file could not be uploaded. Each file may be up to 25 MB, and at most 10 files.", fields.files);
     if(field === "expires_on") return fail("The expiry date cannot be before the issue date.", fields.expires_on);
     if(field === "code") return fail("The code can be up to 64 characters and cannot contain line breaks.", fields.code);
@@ -140,7 +144,7 @@ function uploadError(e, fields, takeSuggestion, fail){
 // the old version keeps the dates it had.
 function openNewVersion(doc, renew){
   const error = h("div", {class: "banner error", role: "alert", hidden: true}, icon("alert-circle"), h("span", {}));
-  const files = h("input", {id: "fld-vfiles", name: "files", type: "file", multiple: true, accept: FILE_TYPES});
+  const files = h("input", {id: "fld-vfiles", name: "files", type: "file", multiple: true});
   const picked = h("ul", {class: "picked"});
   const note = h("textarea", {id: "fld-vnote", name: "change_note", maxlength: "500"});
   const issued = h("input", {id: "fld-vissued", name: "issued_on", type: "date", value: todayISO()});
@@ -206,6 +210,7 @@ function openEditDetails(doc){
     (docs.canEditNone || !doc.departmentId) ? h("option", {value: ""}, "No department") : null,
     options.map(d => h("option", {value: String(d.id)}, d.name)));
   department.value = doc.departmentId ? String(doc.departmentId) : "";
+  const folder = folderSelect("fld-efolder", doc.folderId);
   const issued = h("input", {id: "fld-eissued", name: "issued_on", type: "date", value: doc.issuedOn});
   const expires = h("input", {id: "fld-eexpires", name: "expires_on", type: "date", value: doc.expiresOn});
   const location = h("input", {id: "fld-elocation", name: "location_note", type: "text", maxlength: "200", value: doc.location, autocomplete: "off"});
@@ -218,6 +223,7 @@ function openEditDetails(doc){
     h("div", {class: "grid2"},
       formField("etype", "Type", type),
       formField("edepartment", "Department", department, "Moving it changes who can see it.")),
+    formField("efolder", "Folder", folder, "Move it to another folder. Dragging it in the list does the same."),
     h("div", {class: "grid2"},
       formField("eissued", "Issued on", issued),
       formField("eexpires", "Expires on", expires, "Fixes the date of the current version. Leave empty if it does not expire. For a renewal use Renew instead, so the old dates are kept.")),
@@ -230,7 +236,7 @@ function openEditDetails(doc){
     if(expires.value && issued.value && expires.value < issued.value) return fail("The expiry date cannot be before the issue date.", expires);
     try{
       await api("PATCH", "/api/documents/" + doc.id, {
-        title: title.value, doc_type: type.value, department_id: department.value, issued_on: issued.value,
+        title: title.value, doc_type: type.value, department_id: department.value, folder_id: folder.value, issued_on: issued.value,
         expires_on: expires.value, location_note: location.value, description: description.value,
       });
       closeModal();

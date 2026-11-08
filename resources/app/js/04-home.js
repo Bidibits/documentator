@@ -28,4 +28,5 @@ function applyPermissions(){
   for(const item of document.querySelectorAll("#tabs .nav-item")) item.hidden = !can(PAGE_RIGHTS[item.dataset.page]);
   for(const group of document.querySelectorAll("#tabs .sb-group")) group.hidden = ![...group.querySelectorAll(".nav-item")].some(i => !i.hidden);
   $("#doc-new").hidden = !can("documentator.document.create");
+  $("#doc-newfolder").hidden = !can("documentator.document.create");
 }

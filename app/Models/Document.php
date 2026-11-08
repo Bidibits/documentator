@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 
 #[Fillable([
-    'code', 'title', 'doc_type', 'department_id', 'description', 'issued_on', 'expires_on', 'location_note',
+    'code', 'title', 'doc_type', 'department_id', 'folder_id', 'description', 'issued_on', 'expires_on', 'location_note',
     'current_version_id', 'created_by', 'updated_by',
 ])]
 class Document extends Model
@@ -103,7 +103,7 @@ class Document extends Model
      *
      * @return array<string, mixed>
      */
-    public function view(bool $full = false, ?Grants $grants = null): array
+    public function view(bool $full = false, ?Grants $grants = null, ?array $folderPaths = null): array
     {
         $current = $this->currentVersion;
         $expiry = $this->expiry();
@@ -115,6 +115,8 @@ class Document extends Model
             'type' => (string) $this->doc_type,
             'department' => (string) $this->department?->name,
             'departmentId' => $this->department_id,
+            'folderId' => $this->folder_id,
+            'folder' => $this->folder_id === null ? '' : (string) (($folderPaths ?? Folder::paths())[$this->folder_id] ?? ''),
             'issuedOn' => $this->issued_on?->format('Y-m-d') ?? '',
             'expiresOn' => $this->expires_on?->format('Y-m-d') ?? '',
             'expiryStatus' => $expiry['status'],
@@ -136,6 +138,7 @@ class Document extends Model
                 'download' => $grants->can(Access::TAGS['download'], $this->department_id),
                 'update' => $grants->can(Access::TAGS['update'], $this->department_id),
                 'archive' => $grants->can(Access::TAGS['archive'], $this->department_id),
+                'delete' => $grants->can(Access::TAGS['delete'], $this->department_id),
             ];
         }
 

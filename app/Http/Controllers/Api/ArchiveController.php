@@ -8,6 +8,7 @@ use App\Documents\Archive;
 use App\Documents\ArchiveRules;
 use App\Exceptions\ApiError;
 use App\Http\Controllers\Controller;
+use App\Models\DocumentFile;
 use App\Models\DocumentVersion;
 use App\Models\User;
 use App\Support\ChangeLog;
@@ -15,44 +16,70 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class ArchiveController extends Controller
 {
     /**
-     * The versions that can be archived or already are (never a current one), the most recently opened first and the
-     * never-opened last. One version per row: its document, how many files and how big, when it was last viewed or
-     * downloaded, and whether it is archived.
+     * One page of the versions that can be archived or already are (never a current one), the most recently opened
+     * first and the never-opened last. One version per row: its document, how many files and how big, when it was last
+     * viewed or downloaded, and whether it is archived. q narrows by words (code, title, "Ver 2", note) and filter is
+     * all, live or archived; the summary always counts everything this person may archive.
      */
     public function index(Request $request): JsonResponse
     {
+        $f = $request->validate([
+            'q' => ['nullable', 'string', 'max:200'],
+            'filter' => ['nullable', Rule::in(['all', 'live', 'archived'])],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per' => ['nullable', 'integer', Rule::in([25, 50, 100])],
+        ]);
         $grants = Access::grants($this->user($request));
-        $query = DocumentVersion::query()
+        $scoped = fn () => tap(DocumentVersion::query()
             ->join('documents as d', 'd.id', '=', 'document_versions.document_id')
-            ->whereColumn('document_versions.id', '!=', 'd.current_version_id')
+            ->whereColumn('document_versions.id', '!=', 'd.current_version_id'),
+            fn ($q) => $grants->scope($q, 'd.department_id', Access::TAGS['archive']));   // only the departments this person may archive in
+
+        $query = $scoped();
+        match ($f['filter'] ?? 'all') {
+            'live' => $query->whereNull('document_versions.archived_at'),
+            'archived' => $query->whereNotNull('document_versions.archived_at'),
+            default => null,
+        };
+        foreach (preg_split('/\s+/', trim((string) ($f['q'] ?? '')), -1, PREG_SPLIT_NO_EMPTY) ?: [] as $word) {
+            $like = '%'.addcslashes($word, '\\%_').'%';
+            $query->where(fn ($w) => $w->whereRaw("d.code like ? escape '\\'", [$like])->orWhereRaw("d.title like ? escape '\\'", [$like])
+                ->orWhereRaw("document_versions.change_note like ? escape '\\'", [$like])->orWhereRaw("('ver ' || document_versions.rev_no) like ? escape '\\'", [$like]));
+        }
+
+        $per = (int) ($f['per'] ?? 50);
+        $total = (clone $query)->count();
+        $pages = max(1, (int) ceil($total / $per));
+        $page = min((int) ($f['page'] ?? 1), $pages);
+
+        $versions = $query
             ->select('document_versions.*', 'd.code as document_code', 'd.title as document_title')
             ->with('archiver')
             ->withCount('files')
             ->withSum('files as files_size', 'size')
             ->withMax('files as last_viewed_at', 'last_viewed_at')
-            ->withMax('files as last_downloaded_at', 'last_downloaded_at');
-        $grants->scope($query, 'd.department_id', Access::TAGS['archive']);   // only the departments this person may archive in
-        $versions = $query->get();
-
-        $rows = $versions->map(fn (DocumentVersion $v) => $this->row($v))->sort(function (array $a, array $b) {
+            ->withMax('files as last_downloaded_at', 'last_downloaded_at')
             // newest access first, never-opened last; the newer version first among equals
-            return [$b['lastAccessedAt'] !== '', $b['lastAccessedAt'], $b['createdAt'], $b['id']]
-                <=> [$a['lastAccessedAt'] !== '', $a['lastAccessedAt'], $a['createdAt'], $a['id']];
-        })->values();
+            ->orderByRaw('case when last_viewed_at is null and last_downloaded_at is null then 1 else 0 end')
+            ->orderByRaw("case when coalesce(last_viewed_at, '') >= coalesce(last_downloaded_at, '') then coalesce(last_viewed_at, '') else coalesce(last_downloaded_at, '') end desc")
+            ->orderByDesc('document_versions.created_at')->orderByDesc('document_versions.id')
+            ->forPage($page, $per)->get();
 
-        $archived = $rows->where('archived', true);
+        $archivedIds = $scoped()->whereNotNull('document_versions.archived_at')->select('document_versions.id');
 
         return response()->json([
-            'versions' => $rows->all(),
+            'versions' => $versions->map(fn (DocumentVersion $v) => $this->row($v))->values()->all(),
+            'page' => $page, 'pages' => $pages, 'total' => $total, 'per' => $per,
             'summary' => [
-                'versions' => $rows->count(),
-                'archived' => $archived->count(),
-                'archivedOriginalBytes' => (int) $archived->sum('size'),
-                'archivedZipBytes' => (int) $archived->sum('archiveSize'),
+                'versions' => $scoped()->count(),
+                'archived' => (clone $archivedIds)->count(),
+                'archivedOriginalBytes' => (int) DocumentFile::whereIn('version_id', (clone $archivedIds))->sum('size'),
+                'archivedZipBytes' => (int) $scoped()->whereNotNull('document_versions.archived_at')->sum('document_versions.archive_size'),
             ],
         ]);
     }

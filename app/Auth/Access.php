@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
  * What a person may do. Permissions are namespaced names ("documentator.document.view"), the way OneHub will name them.
  *
  *  - Document tags are granted per department through the person's role (Administration > Roles): view, download,
- *    register, update, archive (and delete, reserved). {@see Grants} answers "in this department?".
+ *    register, update, archive, delete. {@see Grants} answers "in this department?".
  *  - Global permissions (users, departments, roles, audits, archive rules) belong to the Administrator role alone.
  *
  * Every route that needs one is guarded by RequirePermission and the controllers check the department, so the screen
@@ -24,7 +24,7 @@ final class Access
         'register' => 'documentator.document.create',
         'update' => 'documentator.version.create',
         'archive' => 'documentator.version.archive',
-        'delete' => 'documentator.document.delete',   // reserved: there is no delete yet
+        'delete' => 'documentator.document.delete',   // delete a document for good
     ];
 
     public const GLOBAL = [

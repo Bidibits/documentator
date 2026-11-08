@@ -42,7 +42,7 @@ class RoleController extends Controller
             ])->all(),
             'departments' => Department::query()->orderByDesc('active')->orderBy('name')->get(['id', 'name', 'active'])
                 ->map(fn ($d) => ['id' => $d->id, 'name' => $d->name, 'active' => (bool) $d->active])->all(),
-            'tags' => collect(Access::TAGS)->keys()->map(fn ($key) => ['key' => $key, 'reserved' => $key === 'delete'])->all(),
+            'tags' => collect(Access::TAGS)->keys()->map(fn ($key) => ['key' => $key])->all(),
         ]);
     }
 

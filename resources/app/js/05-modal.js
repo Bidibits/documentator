@@ -32,6 +32,7 @@ function runModalCleanup(){
 
 function closeModal(){
   const wasOpen = !$("#modal").hidden;
+  $("#m-save").classList.remove("danger-solid");
   $("#modal").hidden = true;
   runModalCleanup();
   $("#m-body").replaceChildren();   // a closed viewer must not keep its frame (and the file in it) alive

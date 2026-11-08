@@ -145,3 +145,43 @@
 .matrix .mx-inactive th.mx-dept{color:var(--ink-3)}
 .matrix .sub{font-size:12px; font-weight:450; color:var(--ink-3)}
 .matrix tbody tr:last-child th,.matrix tbody tr:last-child td{border-bottom:0}
+
+/* ---------- pages, folders, grid and list ---------- */
+.pager{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:12px 2px 0; font-size:13px; color:var(--ink-3)}
+.pager-btns{display:flex; align-items:center; gap:10px}
+.pager-btns .btn[disabled]{opacity:.45; cursor:default}
+
+.seg{display:inline-flex; border:1px solid var(--line-2); border-radius:var(--r); overflow:hidden; background:var(--surface)}
+.seg button{display:grid; place-items:center; width:36px; height:34px; border:0; background:transparent; color:var(--ink-3); cursor:pointer}
+.seg button + button{border-left:1px solid var(--line-2)}
+.seg button:hover{background:var(--surface-2); color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft); color:var(--accent-text)}
+.seg button:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+
+.crumbs{display:flex; align-items:center; flex-wrap:wrap; gap:2px; margin:-4px 0 12px; font-size:13.5px; min-height:30px}
+.crumbs .ic{width:14px; height:14px; color:var(--ink-4)}
+.crumb{border:0; background:transparent; font:inherit; color:var(--ink-3); padding:4px 8px; border-radius:var(--r); cursor:pointer}
+.crumb:hover{background:var(--surface-2); color:var(--ink)}
+.crumb[aria-current="true"]{color:var(--ink); font-weight:600; cursor:default}
+.crumb.drop-on, .gcard.drop-on, .rt tr.drop-on td{background:var(--accent-soft); outline:2px dashed var(--accent); outline-offset:-2px}
+
+.row-ic{display:inline-flex; vertical-align:middle; margin-right:8px; color:var(--ink-3)}
+.row-ic .ic{width:18px; height:18px}
+.folder-row .row-ic{color:var(--accent)}
+.folder-row .c-title{display:inline}
+.dragging{opacity:.45}
+
+.gridv{display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:12px; padding:14px}
+.gcard{display:flex; flex-direction:column; gap:6px; padding:14px; border:1px solid var(--line); border-radius:var(--r-lg, 10px); background:var(--surface); cursor:pointer; min-width:0; transition:border-color .12s, box-shadow .12s}
+.gcard:hover{border-color:var(--ink-4); box-shadow:var(--shadow-xs)}
+.gcard:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+.gcard .g-ic{display:flex; align-items:center; justify-content:space-between; color:var(--ink-3)}
+.gcard .g-ic .ic{width:30px; height:30px}
+.gcard.folder .g-ic{color:var(--accent)}
+.g-title{font-weight:600; line-height:1.3; overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+.g-sub{font-size:12px; color:var(--ink-3); overflow-wrap:anywhere}
+.g-pills{display:flex; gap:6px; flex-wrap:wrap; margin-top:auto; padding-top:4px}
+.g-acts{display:flex; gap:6px; margin-top:4px}
+.g-label{grid-column:1 / -1; font-size:11.5px; font-weight:650; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-3); margin-top:4px}
+.g-label:first-child{margin-top:0}
+.folder-info{color:var(--ink-3); font-size:13px}

@@ -18,6 +18,7 @@ async function openDetail(id){
   const kv = rows => h("dl", {class: "kv"}, rows.filter(r => r[1]).flatMap(r => [h("dt", {}, r[0]), h("dd", {class: r[2] || ""}, r[1])]));
   const details = kv([
     ["Department", doc.department],
+    ["Folder", doc.folder],
     ["Issued on", fmtDate(doc.issuedOn)],
     ["Expires on", doc.expiresOn ? expiryContent(doc) : ""],
     ["Physical location", doc.location],
@@ -32,10 +33,38 @@ async function openDetail(id){
       doc.can && doc.can.update ? h("div", {class: "sec-acts"},
         h("button", {class: "btn sm", type: "button", onclick: () => openNewVersion(doc)}, icon("upload"), "Upload new version"),
         doc.expiresOn ? h("button", {class: "btn sm", type: "button", onclick: () => openNewVersion(doc, true)}, icon("upload"), "Renew") : null) : null),
-    section("Versions", timeline(doc.versions, current.id, canDownload)));
+    section("Versions", timeline(doc.versions, current.id, canDownload)),
+    doc.can && doc.can.delete ? section("Delete", h("p", {class: "hint"}, "Removes this document, every version and every file for good. Audits keeps a record of what was deleted, but the files cannot come back."),
+      h("button", {class: "btn sm danger", type: "button", onclick: () => confirmDeleteDocument(doc)}, "Delete document")) : null);
 
   openDrawer();
   $("#d-body").scrollTop = 0;
+}
+
+// Delete for good: the person must type the document's code, and the server checks it again
+function confirmDeleteDocument(doc){
+  const {box, fail, clear} = formError();
+  const typed = h("input", {id: "fld-confirm", name: "confirm", type: "text", autocomplete: "off", spellcheck: "false", placeholder: doc.code});
+  const body = h("form", {novalidate: true, onsubmit: e => e.preventDefault()}, box,
+    h("p", {}, "This deletes " + doc.code + " (" + doc.title + ") with its " + plural(doc.versions.length, "version") + " and all their files. It cannot be undone."),
+    formField("confirm", "Type " + doc.code + " to confirm", typed));
+  openModal("Delete " + doc.code + "?", body, async () => {
+    clear();
+    if(typed.value.trim().toLowerCase() !== doc.code.toLowerCase()) return fail("Type the code " + doc.code + " exactly, to be sure.", typed);
+    try{
+      await api("DELETE", "/api/documents/" + doc.id, {confirm: typed.value.trim()});
+      closeModal();
+      closeDrawer();
+      toast("Deleted " + doc.code);
+      await loadDocuments();
+    }catch(e){
+      if(e.status === 401) return;
+      if(e.code === "forbidden") return fail("Your role does not allow deleting this document.");
+      if(e.code === "invalid") return fail("Type the code " + doc.code + " exactly, to be sure.", typed);
+      fail(errorWords(e));
+    }
+  }, "Delete for good");
+  $("#m-save").classList.add("danger-solid");
 }
 
 function section(title, content, action){

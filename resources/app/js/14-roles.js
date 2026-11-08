@@ -10,7 +10,7 @@ const TAG_HINTS = {
   register: "Register new documents in this department",
   update: "Upload new versions of its documents",
   archive: "Archive its old versions, and take them out again",
-  delete: "Reserved: there is no delete yet",
+  delete: "Delete its documents for good, with all their versions and files",
 };
 
 function clearRoles(){
@@ -140,7 +140,7 @@ function openAccess(r){
   const ticked = id => (r.grants[String(id)] || []);
 
   const setBox = (id, tag, on) => { boxes[id][tag].checked = on; };
-  const rowOn = (id, on) => { for(const t of tags) if(t !== "delete") setBox(id, t, on); };
+  const rowOn = (id, on) => { for(const t of tags) setBox(id, t, on); };
   // you cannot do anything to what you cannot see: anything ticked brings View with it, and no View clears the row
   const onChange = (id, tag) => {
     if(tag === "view" && !boxes[id].view.checked) rowOn(id, false);
@@ -149,11 +149,10 @@ function openAccess(r){
   };
   const sync = () => {
     for(const p of places){
-      const all = tags.filter(t => t !== "delete").every(t => boxes[p.id][t].checked);
+      const all = tags.every(t => boxes[p.id][t].checked);
       boxes[p.id].all.checked = all;
     }
     for(const t of tags){
-      if(t === "delete") continue;
       boxes.col[t].checked = places.every(p => boxes[p.id][t].checked);
     }
   };
@@ -161,10 +160,10 @@ function openAccess(r){
   boxes.col = {};
   const head = h("tr", {}, h("th", {scope: "col", class: "mx-dept"}, "Department"), h("th", {scope: "col", class: "mx-c"}, h("div", {class: "mx-t"}, "All")),
     tags.map(t => {
-      const col = h("input", {type: "checkbox", "aria-label": "Tick every department for " + TAG_LABELS[t], disabled: t === "delete"});
+      const col = h("input", {type: "checkbox", "aria-label": "Tick every department for " + TAG_LABELS[t]});
       boxes.col[t] = col;
       col.addEventListener("change", () => { for(const p of places){ setBox(p.id, t, col.checked); if(t !== "view" && col.checked) setBox(p.id, "view", true); if(t === "view" && !col.checked) rowOn(p.id, false); } sync(); });
-      return h("th", {scope: "col", class: "mx-c" + (t === "delete" ? " mx-off" : ""), title: TAG_HINTS[t]}, h("div", {class: "mx-t"}, TAG_LABELS[t]), col);
+      return h("th", {scope: "col", class: "mx-c", title: TAG_HINTS[t]}, h("div", {class: "mx-t"}, TAG_LABELS[t]), col);
     }));
 
   const body = h("form", {novalidate: true, onsubmit: e => e.preventDefault()}, box,
@@ -179,20 +178,20 @@ function openAccess(r){
           h("th", {scope: "row", class: "mx-dept"}, p.name, p.off ? h("span", {class: "pill p-mute usr-flag"}, "switched off") : null, p.id === 0 ? h("div", {class: "sub"}, "documents with no department") : null),
           h("td", {class: "mx-c"}, all),
           tags.map(t => {
-            const cb = h("input", {type: "checkbox", "aria-label": TAG_LABELS[t] + " in " + p.name, disabled: t === "delete", title: TAG_HINTS[t]});
+            const cb = h("input", {type: "checkbox", "aria-label": TAG_LABELS[t] + " in " + p.name, title: TAG_HINTS[t]});
             cb.checked = ticked(p.id).includes(t);
             boxes[p.id][t] = cb;
             cb.addEventListener("change", () => onChange(p.id, t));
-            return h("td", {class: "mx-c" + (t === "delete" ? " mx-off" : "")}, cb);
+            return h("td", {class: "mx-c"}, cb);
           }));
       })))),
-    h("p", {class: "hint"}, "Delete is shown for later: there is no way to delete a document yet. Users, departments, roles, audits and the archive rules always need the Administrator role."));
+    h("p", {class: "hint"}, "Delete removes a document for good, with its versions and files (Audits keeps a record). Users, departments, roles, audits and the archive rules always need the Administrator role."));
 
   openModal("Access for " + r.name, body, async () => {
     clear();
     const grants = {};
     for(const p of places){
-      const on = tags.filter(t => t !== "delete" && boxes[p.id][t].checked);
+      const on = tags.filter(t => boxes[p.id][t].checked);
       if(on.length) grants[String(p.id)] = on;
     }
     try{

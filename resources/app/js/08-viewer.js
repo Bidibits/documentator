@@ -1,17 +1,20 @@
 /* ---------- the file viewer ---------- */
 // Shows what is inside a file without leaving the app: a PDF in the browser's own PDF viewer, a picture, plain text,
-// a CSV as a table, a Word (.docx) file as text and a spreadsheet (.xlsx) as a table. The older .doc/.xls and PowerPoint
-// cannot be drawn, so they only have Download. The Word and Excel readers are vendored (resources/app/vendor) and are
-// only loaded the first time one of those files is opened.
-const PREVIEW_KINDS = {pdf: "pdf", png: "image", jpg: "image", jpeg: "image", txt: "text", csv: "csv", docx: "docx", xlsx: "xlsx"};
-const VENDOR = {docx: "mammoth.browser.min.js", xlsx: "read-excel-file.min.js"};
+// a CSV as a table, a Word (.docx) file as text and a spreadsheet (.xlsx or the old .xls) as a table. Old Word (.doc),
+// PowerPoint and OpenDocument files are turned into a PDF by the server when it has LibreOffice (the session says so);
+// otherwise, and for every other kind of file, there is only Download. The Word and Excel readers are vendored
+// (resources/app/vendor) and are only loaded the first time one of those files is opened.
+const PREVIEW_KINDS = {pdf: "pdf", png: "image", jpg: "image", jpeg: "image", gif: "image", webp: "image", txt: "text", csv: "csv", docx: "docx", xlsx: "xlsx", xls: "xls",
+                       doc: "convert", ppt: "convert", pptx: "convert", odt: "convert", odp: "convert", ods: "convert", rtf: "convert"};
+const VENDOR = {docx: "mammoth.browser.min.js", xlsx: "read-excel-file.min.js", xls: "sheetjs.full.min.js"};
 const TEXT_LIMIT = 1024 * 1024;   // bytes of text shown; the rest is only in the download
 const CSV_ROW_LIMIT = 1000;
 let viewerToken = 0;
 
 function previewKind(name){
   const m = /\.([^.]+)$/.exec(name || "");
-  return m ? PREVIEW_KINDS[m[1].toLowerCase()] || null : null;
+  const kind = m ? PREVIEW_KINDS[m[1].toLowerCase()] || null : null;
+  return kind === "convert" && !(currentUser && currentUser.previews) ? null : kind;   // converting needs LibreOffice on the server
 }
 
 async function openViewer(file){
@@ -27,22 +30,22 @@ async function openViewer(file){
   });
 
   try{
-    const blob = await apiBlob("/api/files/" + file.id + "?view=1");
+    const blob = await apiBlob("/api/files/" + file.id + (kind === "convert" ? "/preview" : "?view=1"));
     if(token !== viewerToken) return;   // closed, or another file opened, while this one was coming
     noteAccess(file, "viewed");
 
-    if(kind === "pdf" || kind === "image"){
+    if(kind === "pdf" || kind === "image" || kind === "convert"){
       address = URL.createObjectURL(blob);
-      stage.replaceChildren(kind === "pdf"
+      stage.replaceChildren(kind !== "image"
         ? h("iframe", {class: "viewer-frame", src: address, title: file.name})
         : h("img", {class: "viewer-img", src: address, alt: file.name}));
       return;
     }
 
-    if(kind === "docx" || kind === "xlsx"){
+    if(kind === "docx" || kind === "xlsx" || kind === "xls"){
       await loadVendor(kind);
       if(token !== viewerToken) return;
-      const shown = kind === "docx" ? await docxView(blob) : await xlsxView(blob, () => token !== viewerToken);
+      const shown = kind === "docx" ? await docxView(blob) : kind === "xls" ? await xlsView(blob) : await xlsxView(blob, () => token !== viewerToken);
       if(token !== viewerToken) return;
       stage.replaceChildren(shown);
       return;
@@ -58,7 +61,10 @@ async function openViewer(file){
   }catch(e){
     if(token !== viewerToken || e.status === 401) return;
     stage.replaceChildren(h("div", {class: "viewer-note"},
-      e.code === "file_missing" ? "That file is missing from the server's storage." : errorWords(e)));
+      e.code === "file_missing" ? "That file is missing from the server's storage."
+      : e.code === "preview_failed" ? "The server could not turn this file into a preview. Download it to open it."
+      : e.code === "preview_unavailable" ? "This kind of file cannot be previewed here. Download it to open it."
+      : errorWords(e)));
   }
 }
 
@@ -130,6 +136,25 @@ async function xlsxView(blob, closed){
     if(i === 0) show(s.name, button);
   });
   return h("div", {class: "viewer-sheet"}, sheets.length > 1 ? tabs : null, holder, note);
+}
+// An old Excel (.xls) file: SheetJS reads every sheet; the same tabs and table as .xlsx
+async function xlsView(blob){
+  const book = window.XLSX.read(await blob.arrayBuffer(), {type: "array", cellDates: true});
+  const holder = h("div", {class: "viewer-sheet-body"});
+  const tabs = h("div", {class: "viewer-tabs"});
+  const note = h("div", {class: "viewer-note"}, "A plain preview: formulas show their last saved value, and formatting and charts are not shown.");
+  const show = (name, button) => {
+    for(const b of tabs.children) b.classList.toggle("on", b === button);
+    const rows = window.XLSX.utils.sheet_to_json(book.Sheets[name], {header: 1, raw: false, defval: ""});
+    holder.replaceChildren(rowsTable(rows.map(r => r.map(cellText))));
+  };
+  book.SheetNames.forEach((name, i) => {
+    const button = h("button", {type: "button", class: "viewer-tab"}, name);
+    button.addEventListener("click", () => show(name, button));
+    tabs.append(button);
+    if(i === 0) show(name, button);
+  });
+  return h("div", {class: "viewer-sheet"}, book.SheetNames.length > 1 ? tabs : null, holder, note);
 }
 function cellText(v){
   if(v == null) return "";

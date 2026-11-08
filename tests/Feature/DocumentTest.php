@@ -215,15 +215,11 @@ class DocumentTest extends TestCase
     public static function badFiles(): array
     {
         return [
-            'a program' => ['program.exe', 'application/x-msdownload'],
             'a program renamed to pdf' => ['invoice.pdf', 'application/x-msdownload'],
             'a program renamed to xlsx' => ['budget.xlsx', 'application/x-msdownload'],
             'a pdf renamed to xlsx' => ['budget.xlsx', 'application/pdf'],
             'a pdf renamed to docx' => ['letter.docx', 'application/pdf'],
             'a spreadsheet renamed to pdf' => ['report.pdf', 'application/vnd.ms-excel'],
-            'a zip' => ['bundle.zip', 'application/zip'],
-            'a script' => ['run.js', 'text/javascript'],
-            'a web page' => ['page.html', 'text/html'],
             'a script renamed to txt' => ['note.txt', 'text/x-php'],
             'no extension' => ['README', 'application/pdf'],
         ];
@@ -239,6 +235,50 @@ class DocumentTest extends TestCase
 
         $this->assertSame(0, Document::count());
         $this->assertSame([], Storage::disk('local')->allFiles());
+    }
+
+    /** @return array<string, array{string}> */
+    public static function programs(): array
+    {
+        return ['a program' => ['program.exe'], 'a script' => ['run.js'], 'a shell script' => ['setup.sh'], 'a batch file' => ['go.BAT'], 'a shortcut' => ['x.lnk']];
+    }
+
+    #[DataProvider('programs')]
+    public function test_programs_and_scripts_are_refused_as_blocked(string $name): void
+    {
+        $this->signedIn();
+
+        $this->register([], [UploadedFile::fake()->create($name, 12, 'application/octet-stream')])
+            ->assertStatus(422)->assertJsonPath('field', 'files')->assertJsonPath('message', 'blocked');
+        $this->assertSame(0, Document::count());
+    }
+
+    /** @return array<string, array{string, string, string}> */
+    public static function anyKind(): array
+    {
+        return [
+            'a zip' => ['bundle.zip', 'application/zip', 'application/octet-stream'],
+            'a web page' => ['page.html', 'text/html', 'application/octet-stream'],
+            'a drawing' => ['plan.dwg', 'application/octet-stream', 'application/octet-stream'],
+            'an old Word file' => ['letter.doc', 'application/msword', 'application/msword'],
+            'an old Excel file' => ['budget.xls', 'application/vnd.ms-excel', 'application/vnd.ms-excel'],
+            'a PowerPoint file' => ['deck.ppt', 'application/vnd.ms-powerpoint', 'application/vnd.ms-powerpoint'],
+            'a picture kind we know' => ['logo.gif', 'image/gif', 'image/gif'],
+        ];
+    }
+
+    #[DataProvider('anyKind')]
+    public function test_any_other_kind_of_file_is_kept_and_comes_back_as_a_download(string $name, string $detected, string $stored): void
+    {
+        $this->signedIn();
+
+        $id = $this->register([], [UploadedFile::fake()->create($name, 12, $detected)])->assertCreated()->json('document.versions.0.files.0.id');
+
+        $this->assertSame($stored, DocumentFile::find($id)->mime);
+        $response = $this->api('GET', "/api/files/{$id}")->assertOk();
+        $this->assertSame($stored, explode(';', (string) $response->headers->get('Content-Type'))[0]);
+        $this->assertSame('nosniff', $response->headers->get('X-Content-Type-Options'));
+        $this->assertStringContainsString('attachment', (string) $response->headers->get('Content-Disposition'));
     }
 
     public function test_the_code_is_unique_whatever_its_case(): void

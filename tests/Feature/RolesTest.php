@@ -60,7 +60,6 @@ class RolesTest extends TestCase
         $this->assertTrue($response->json('roles.2.system'));
         $this->assertSame(['HR', 'Old unit'], array_column($response->json('departments'), 'name'));   // in use first
         $this->assertSame(['view', 'download', 'register', 'update', 'archive', 'delete'], array_column($response->json('tags'), 'key'));
-        $this->assertTrue($response->json('tags.5.reserved'));   // there is no delete yet
     }
 
     public function test_a_role_is_made_with_a_name_a_key_and_nothing_ticked(): void

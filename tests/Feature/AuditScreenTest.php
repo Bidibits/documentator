@@ -87,13 +87,13 @@ class AuditScreenTest extends TestCase
         $this->assertMatchesRegularExpression('/^\d{4}-\d\d-\d\dT[\d:.]+Z$/', $file['at']);
     }
 
-    public function test_a_record_that_is_gone_shows_no_name_and_keeps_its_id(): void
+    public function test_a_document_that_is_gone_is_still_known_by_the_code_its_log_rows_recorded(): void
     {
         $id = $this->twoSaves();
         DB::table('documents')->where('id', $id)->delete();   // cascades; the log rows stay
 
         $entry = collect($this->api('GET', '/api/audits')->json('entries'))->first(fn ($e) => $e['table'] === 'documents' && $e['column'] === 'code');
-        $this->assertNull($entry['record']);
+        $this->assertSame('LEASE-1', $entry['record']);
         $this->assertSame((string) $id, $entry['recordId']);
         $this->assertSame('LEASE-1', $entry['after']);
     }
@@ -149,11 +149,11 @@ class AuditScreenTest extends TestCase
         $this->api('GET', '/api/audits?from=2026-11-06&to=2026-11-01')->assertStatus(422)->assertJsonPath('field', 'to');
     }
 
-    public function test_only_the_newest_500_come_and_it_says_there_are_more(): void
+    public function test_the_log_comes_a_hundred_changes_to_a_page_newest_first(): void
     {
         $this->as('ana');
         $rows = [];
-        for ($i = 1; $i <= 501; $i++) {
+        for ($i = 1; $i <= 250; $i++) {
             $rows[] = ['save_id' => "s{$i}", 'occurred_at' => '2026-11-05 00:00:00', 'actor_user_id' => 1, 'actor_username' => 'ana', 'source' => 'Manual',
                 'table_name' => 'documents', 'record_id' => '1', 'column_name' => 'title', 'value_before' => null, 'value_after' => "T{$i}",
                 'change_type' => 'Created', 'ip' => null];
@@ -162,10 +162,17 @@ class AuditScreenTest extends TestCase
             DB::table('audit_changes')->insert($chunk);
         }
 
-        $response = $this->api('GET', '/api/audits')->assertOk();
-        $this->assertCount(500, $response->json('entries'));
-        $this->assertTrue($response->json('more'));
-        $this->assertSame('T501', $response->json('entries.0.after'));
+        $first = $this->api('GET', '/api/audits')->assertOk();
+        $this->assertCount(100, $first->json('entries'));
+        $this->assertSame([1, 3, 250, 100], [$first->json('page'), $first->json('pages'), $first->json('total'), $first->json('per')]);
+        $this->assertSame('T250', $first->json('entries.0.after'));
+
+        $last = $this->api('GET', '/api/audits?page=3')->assertOk();
+        $this->assertCount(50, $last->json('entries'));
+        $this->assertSame('T50', $last->json('entries.0.after'));
+
+        // a page past the end is the last page
+        $this->api('GET', '/api/audits?page=99')->assertOk()->assertJsonPath('page', 3);
     }
 
     public function test_it_lists_the_people_who_made_changes_and_the_tables_it_can_filter_by(): void
@@ -174,7 +181,7 @@ class AuditScreenTest extends TestCase
 
         $response = $this->api('GET', '/api/audits')->assertOk();
         $this->assertEqualsCanonicalizing(['Ana Reyes', 'Ben Cruz'], array_column($response->json('people'), 'name'));
-        $this->assertSame(['documents', 'document_versions', 'document_files', 'users', 'archive_rules', 'departments', 'roles'], array_column($response->json('tables'), 'table'));
+        $this->assertSame(['documents', 'document_versions', 'document_files', 'users', 'archive_rules', 'departments', 'roles', 'folders'], array_column($response->json('tables'), 'table'));
     }
 
     public function test_passwords_show_as_hidden_and_yes_no_in_words(): void

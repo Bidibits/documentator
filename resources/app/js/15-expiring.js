@@ -1,13 +1,13 @@
 /* ---------- the Expiring panel ---------- */
-// Documents that have expired or will soon (the server marks each one), the soonest first, from the same list the Documents
-// panel loads. The side bar's badge counts them. Renew opens the same window as in the drawer.
-function expiringDocs(){
-  return docs.all.filter(d => d.expiryStatus === "expiring" || d.expiryStatus === "expired")
-    .sort((a, b) => a.expiresOn < b.expiresOn ? -1 : a.expiresOn > b.expiresOn ? 1 : a.code.localeCompare(b.code));
-}
+// Documents that have expired or will soon, the soonest first, a page at a time from the server. The side bar's badge counts
+// them (every documents request carries the count). Renew opens the same window as in the drawer.
+const exp = {rows: [], page: 1, pages: 1, total: 0, per: 25, loaded: false};
+let expToken = 0;
 
 function clearExpiring(){
+  exp.rows = []; exp.page = 1; exp.pages = 1; exp.total = 0; exp.loaded = false; expToken++;
   $("#exp-table").replaceChildren();
+  $("#exp-pager").replaceChildren();
   $("#exp-count").textContent = "";
   setExpiringBadge(0);
 }
@@ -19,21 +19,38 @@ function setExpiringBadge(n){
   badge.closest(".nav-item").title = n === 0 ? "Expiring" : "Expiring: " + plural(n, "document") + " expired or expiring soon";
 }
 
+async function loadExpiring(page){
+  const token = ++expToken;
+  if(page) exp.page = page;
+  try{
+    const data = await api("GET", "/api/documents?status=attention&sort=expiry&page=" + exp.page);
+    if(token !== expToken) return;
+    exp.rows = data.documents || [];
+    exp.page = data.page; exp.pages = data.pages; exp.total = data.total; exp.per = data.per;
+    exp.loaded = true;
+    setExpiringBadge(data.expiringCount || 0);
+    renderExpiring();
+  }catch(e){
+    if(token !== expToken || e.status === 401 || e.code === "password_change_required") return;
+    $("#exp-table").replaceChildren(emptyBlock("Could not load the expiring documents", errorWords(e)));
+    $("#exp-count").textContent = "";
+    $("#exp-pager").replaceChildren();
+  }
+}
+
 function renderExpiring(){
-  const rows = expiringDocs();
-  setExpiringBadge(rows.length);
-  const expired = rows.filter(d => d.expiryStatus === "expired").length;
-  $("#exp-count").textContent = rows.length === 0 ? "" : plural(rows.length, "document") + (expired ? ", " + expired + " expired" : "");
-  if(rows.length === 0){
+  $("#exp-count").textContent = exp.total === 0 ? "" : plural(exp.total, "document") + " expired or expiring soon";
+  renderPager($("#exp-pager"), exp, page => loadExpiring(page));
+  if(exp.rows.length === 0){
     $("#exp-table").replaceChildren(emptyBlock("Nothing is expiring", "No document has expired or runs out in the next 30 days. A document needs an expiry date to show up here."));
     return;
   }
   const th = label => h("th", {scope: "col"}, label);
-  const body = rows.map(doc => {
+  const body = exp.rows.map(doc => {
     const open = () => openDetail(doc.id);
     return h("tr", {tabindex: "0", onclick: open, onkeydown: e => { if(e.key === "Enter" || e.key === " "){ e.preventDefault(); open(); } }},
       h("td", {class: "mono"}, h("span", {class: "tag"}, doc.code)),
-      h("td", {class: "wrap"}, h("div", {class: "c-title"}, doc.title)),
+      h("td", {class: "wrap"}, h("div", {class: "c-title"}, doc.title), doc.folder ? h("div", {class: "sub"}, doc.folder) : null),
       h("td", {class: "nowrap"}, doc.type || "-"),
       h("td", {class: "nowrap"}, doc.department || "-"),
       h("td", {}, expiryContent(doc)),
