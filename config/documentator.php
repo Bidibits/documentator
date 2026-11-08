@@ -8,7 +8,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Documentator
+    | Documentanator
     |--------------------------------------------------------------------------
     |
     | Idle sign-out is SESSION_LIFETIME (minutes); the absolute limit below applies on top of it.

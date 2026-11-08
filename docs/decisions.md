@@ -1,4 +1,4 @@
-# Documentator: decisions
+# Documentanator: decisions
 
 Settled calls, with the reason. Check here before changing the schema or the rules. Source of the plan:
 `Documentator-Handover.pdf` (7 Nov 2026), where a choice there is not overridden below.
@@ -303,3 +303,10 @@ Settled calls, with the reason. Check here before changing the schema or the rul
 - **Grid or list.** A switch on the Documents screen; the choice is kept in this browser.
 - **Not built:** folder permissions of their own (hiding a folder's name from people who cannot see its documents), a recycle
   bin, dragging onto the side bar, moving several documents at once, a physical-location tree with its own rules.
+
+## The name (9 Nov 2026, the user's call)
+
+- The app is called **Documentanator** wherever a person sees it: the page title, the side bar and sign-in cards, the start-up
+  messages and scripts, `APP_NAME`. **Inside, the old spelling stays** (`config/documentator.php`, the `X-Documentator` header, the
+  `documentator.*` permission names stored in roles, `DOCUMENTATOR_*` settings, the `/build/documentator/` folder, the project
+  folder, and the name of the handover PDF): renaming those would break stored roles and sessions and changes nothing on screen.
