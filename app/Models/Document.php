@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 
 #[Fillable([
-    'code', 'title', 'doc_type', 'department', 'description', 'issued_on', 'expires_on', 'location_note',
+    'code', 'title', 'doc_type', 'department_id', 'description', 'issued_on', 'expires_on', 'location_note',
     'current_version_id', 'created_by', 'updated_by',
 ])]
 class Document extends Model
@@ -28,7 +28,7 @@ class Document extends Model
 
     /** What the drawer needs loaded to show a whole document. */
     public const DETAIL = [
-        'currentVersion.files', 'creator', 'versions.creator',
+        'currentVersion.files', 'creator', 'department', 'versions.creator',
         'versions.files.viewer', 'versions.files.downloader', 'versions.archiver',
     ];
 
@@ -60,6 +60,11 @@ class Document extends Model
         return $this->belongsTo(DocumentVersion::class, 'current_version_id');
     }
 
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -87,7 +92,8 @@ class Document extends Model
             'code' => $this->code,
             'title' => $this->title,
             'type' => (string) $this->doc_type,
-            'department' => (string) $this->department,
+            'department' => (string) $this->department?->name,
+            'departmentId' => $this->department_id,
             'issuedOn' => $this->issued_on?->format('Y-m-d') ?? '',
             'expiresOn' => $this->expires_on?->format('Y-m-d') ?? '',
             'location' => (string) $this->location_note,

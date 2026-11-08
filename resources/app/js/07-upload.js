@@ -16,6 +16,7 @@ function formField(name, label, control, hint, required){
 }
 
 async function openUpload(){
+  if(!docs.loaded) await loadDocuments();   // the form offers the departments that list carries
   let suggested = "", suggestFailed = null;
   try{ suggested = (await api("GET", "/api/documents/suggest-code")).code || ""; }
   catch(e){ if(e.status === 401) return; suggestFailed = e; }
@@ -26,7 +27,8 @@ async function openUpload(){
   const useSuggested = h("button", {class: "btn sm", type: "button", hidden: true}, "Use suggestion");
   const title = h("input", {id: "fld-title", name: "title", type: "text", maxlength: "200", autocomplete: "off"});
   const type = h("input", {id: "fld-doc_type", name: "doc_type", type: "text", maxlength: "64", list: "dl-types", autocomplete: "off", placeholder: "Choose from the list or type your own"});
-  const department = h("input", {id: "fld-department", name: "department", type: "text", maxlength: "100", list: "dl-depts", autocomplete: "off", placeholder: docs.departments.length ? "Choose from the list or type your own" : "Type the department"});
+  const department = h("select", {id: "fld-department_id", name: "department_id"},
+    h("option", {value: ""}, "No department"), docs.departments.map(d => h("option", {value: String(d.id)}, d.name)));
   const issued = h("input", {id: "fld-issued_on", name: "issued_on", type: "date", value: todayISO()});
   const expires = h("input", {id: "fld-expires_on", name: "expires_on", type: "date"});
   const location = h("input", {id: "fld-location_note", name: "location_note", type: "text", maxlength: "200", autocomplete: "off"});
@@ -58,7 +60,7 @@ async function openUpload(){
     formField("title", "Title", title, "Filled in from the first file's name; change it if you like.", true),
     h("div", {class: "grid2"},
       formField("doc_type", "Type", type, "Pick one from the list, or type a new kind."),
-      formField("department", "Department", department, "Which department this belongs to.")),
+      formField("department_id", "Department", department, docs.departments.length ? "Which department this belongs to." : "No departments yet. An administrator adds them under Administration, Departments.")),
     h("div", {class: "grid2"},
       formField("issued_on", "Issued on", issued),
       formField("expires_on", "Expires on", expires, "Leave empty if it does not expire.")),
@@ -76,7 +78,7 @@ async function openUpload(){
     const form = new FormData();
     form.append("code", codeText);
     form.append("title", title.value.trim());
-    for(const [key, input] of [["doc_type", type], ["department", department], ["issued_on", issued], ["expires_on", expires],
+    for(const [key, input] of [["doc_type", type], ["department_id", department], ["issued_on", issued], ["expires_on", expires],
                                ["location_note", location], ["description", description]]){
       if(input.value.trim() !== "") form.append(key, input.value.trim());
     }
@@ -90,7 +92,7 @@ async function openUpload(){
       openDetail(result.document.id);
     }catch(e){
       if(e.status === 401) return;
-      uploadError(e, {code: code, title: title, files: files, expires_on: expires, issued_on: issued}, suggestion => {
+      uploadError(e, {code: code, title: title, files: files, expires_on: expires, issued_on: issued, department_id: department}, suggestion => {
         suggested = suggestion;
         code.value = suggestion;
         syncSuggestion();
@@ -123,6 +125,7 @@ function uploadError(e, fields, takeSuggestion, fail){
     if(field === "expires_on") return fail("The expiry date cannot be before the issue date.", fields.expires_on);
     if(field === "code") return fail("The code can be up to 64 characters and cannot contain line breaks.", fields.code);
     if(field === "title") return fail("Enter a title of up to 200 characters.", fields.title);
+    if(field === "department_id") return fail("That department is not available. Choose another.", fields.department_id);
     return fail("Check the form: one of the fields is too long or not valid.");
   }
   if(e.code === "too_large") return fail("The upload is too big. Send fewer or smaller files.", fields.files);

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\ArchiveController;
 use App\Http\Controllers\Api\AuditController;
+use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\FileController;
 use App\Http\Controllers\Api\PasswordController;
@@ -49,6 +50,12 @@ Route::middleware('documentator.signed-in')->group(function () {
         Route::post('archive/run', [ArchiveController::class, 'run']);
         Route::post('versions/{version}/archive', [ArchiveController::class, 'archive'])->whereNumber('version');
         Route::post('versions/{version}/restore', [ArchiveController::class, 'restore'])->whereNumber('version');
+    });
+
+    Route::middleware('documentator.can:documentator.department.manage')->group(function () {
+        Route::get('departments', [DepartmentController::class, 'index']);
+        Route::post('departments', [DepartmentController::class, 'store']);
+        Route::patch('departments/{department}', [DepartmentController::class, 'update'])->whereNumber('department');
     });
 
     Route::middleware('documentator.can:documentator.user.manage')->group(function () {

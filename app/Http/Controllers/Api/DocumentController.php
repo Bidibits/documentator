@@ -6,6 +6,7 @@ use App\Auth\SessionUser;
 use App\Documents\CodeSuggestion;
 use App\Exceptions\ApiError;
 use App\Http\Controllers\Controller;
+use App\Models\Department;
 use App\Models\Document;
 use App\Models\DocumentFile;
 use App\Models\DocumentVersion;
@@ -21,21 +22,23 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Throwable;
 
 class DocumentController extends Controller
 {
     /** The columns of a new document that go into the change log (its dates are added as typed). */
-    private const LOGGED_DOCUMENT_COLUMNS = ['code', 'title', 'doc_type', 'department', 'description', 'location_note', 'current_version_id', 'created_by', 'updated_by'];
+    private const LOGGED_DOCUMENT_COLUMNS = ['code', 'title', 'doc_type', 'department_id', 'description', 'location_note', 'current_version_id', 'created_by', 'updated_by'];
 
-    /** The register: newest first, plus the departments and types already in use (the form offers them). */
+    /** The register: newest first, plus the departments to choose from and the types already in use (the form offers them). */
     public function index(): JsonResponse
     {
-        $documents = Document::withAccessDates()->with(['currentVersion.files', 'creator'])->orderByDesc('id')->get();
+        $documents = Document::withAccessDates()->with(['currentVersion.files', 'creator', 'department'])->orderByDesc('id')->get();
 
         return response()->json([
             'documents' => $documents->map->view()->all(),
-            'departments' => $this->distinct('department'),
+            // the departments a new document may be given (switched-off ones are not offered)
+            'departments' => Department::query()->where('active', true)->orderBy('name')->get(['id', 'name'])->map(fn ($d) => ['id' => $d->id, 'name' => $d->name])->all(),
             'types' => $this->distinct('doc_type'),
         ]);
     }
@@ -62,7 +65,7 @@ class DocumentController extends Controller
             'code' => ['required', 'string', 'max:64', 'regex:/^[^\x00-\x1F\x7F]+$/u'],
             'title' => ['required', 'string', 'max:200'],
             'doc_type' => ['nullable', 'string', 'max:64'],
-            'department' => ['nullable', 'string', 'max:100'],
+            'department_id' => ['nullable', 'integer', Rule::exists('departments', 'id')->where('active', true)],
             'description' => ['nullable', 'string', 'max:2000'],
             'issued_on' => ['nullable', 'date_format:Y-m-d'],
             'expires_on' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:issued_on'],
@@ -78,7 +81,7 @@ class DocumentController extends Controller
                     'code' => $data['code'],
                     'title' => $data['title'],
                     'doc_type' => $data['doc_type'] ?? null,
-                    'department' => $data['department'] ?? null,
+                    'department_id' => $data['department_id'] ?? null,
                     'description' => $data['description'] ?? null,
                     'issued_on' => $data['issued_on'] ?? null,
                     'expires_on' => $data['expires_on'] ?? null,

@@ -23,11 +23,13 @@ final class ChangeReader
         'document_files' => 'Files',
         'users' => 'Users',
         'archive_rules' => 'Archive rules',
+        'departments' => 'Departments',
     ];
 
     /** What the screens call a column, where its database name does not say it the same way. */
     private const COLUMNS = [
         'doc_type' => 'Type',
+        'department_id' => 'Department',
         'location_note' => 'Physical location',
         'current_version_id' => 'Current version',
         'created_by' => 'Created by',
@@ -180,6 +182,8 @@ final class ChangeReader
         $fileRows = $fileIds ? DB::table('document_files')->whereIn('id', $fileIds)->get(['id', 'original_name', 'version_id']) : collect();
         $documentIds = array_merge($documentIds, $versionRows->pluck('document_id')->all());
 
+        $departments = DB::table('departments')->whereIn('id', array_unique(array_merge($ids('departments'), $refs('department_id'))))->pluck('name', 'id')
+            ->mapWithKeys(fn ($name, $id) => [(string) $id => $name])->all();
         $ruleIds = $ids('archive_rules');
         $rules = $ruleIds ? DB::table('archive_rules')->whereIn('id', $ruleIds)->pluck('kind', 'id')
             ->mapWithKeys(fn ($kind, $id) => [(string) $id => $kind === 'idle' ? 'Not opened for a while' : 'Replaced by a newer version'])->all() : [];
@@ -195,9 +199,11 @@ final class ChangeReader
                 'document_files' => $fileRows->mapWithKeys(fn ($f) => [(string) $f->id => $f->original_name])->all(),
                 'users' => $users,
                 'archive_rules' => $rules,
+                'departments' => $departments,
             ],
             'users' => $users,
             'rules' => $rules,
+            'departments' => $departments,
             'documents' => collect($codes)->mapWithKeys(fn ($code, $id) => [(string) $id => $code])->all(),
             'versions' => $versions,
         ];
@@ -242,6 +248,7 @@ final class ChangeReader
 
         return match (true) {
             $column === 'document_id' => $names['documents'][$value] ?? $value,
+            $column === 'department_id' => $names['departments'][$value] ?? $value,
             $column === 'version_id', $column === 'current_version_id' => $names['versions'][$value] ?? $value,
             $column === 'role' => Access::label($value),
             in_array($column, self::YES_NO, true) => $value === 'true' ? 'Yes' : ($value === 'false' ? 'No' : $value),

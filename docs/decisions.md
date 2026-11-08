@@ -176,3 +176,20 @@ Settled calls, with the reason. Check here before changing the schema or the rul
   and `user.created`, `user.password-set`, `user.password-changed`, `user.switched-off/on` are in the activity log.
 - **Not built:** password reset by e-mail (there is no e-mail, by design), OneHub linking, editing roles, departments as
   permissions, and a screen for the activity log (sign-ins, views and downloads).
+
+## Departments (8 Nov 2026)
+
+- **Departments are records an administrator keeps** (Administration > Departments, right `documentator.department.manage`, held
+  by the Administrator role): add, rename, switch off / on. **Never deleted**: documents keep pointing at a switched-off
+  department, it is just not offered for new documents (the upload form lists only those in use, and the server refuses a
+  switched-off or unknown one with `department_id`). Names are unique whatever their case and spacing, up to 100 characters.
+  A document may have **no department**. Each change is a column change in Audits (table "Departments") and
+  `department.created / switched-on / switched-off` are in the activity log.
+- **Documents now hold `department_id`** (the typed `department` text is gone). The migration turned every distinct department
+  already typed on a document (ignoring case and surrounding spaces, first spelling wins, non-ASCII included) into a
+  department and pointed its documents at it, blank ones became "no department"; rolling back restores the text. Rehearsed on
+  messy data before running. Audit rows written before this keep the old column name `department` (shown as "Department").
+- **Next, not built:** departments as a dimension of roles. The user's wish: a role carries, per department, tags such as
+  view / download / update / archive / delete, so a department's documents can only be reached by someone whose role holds
+  the matching tag for that department. Open questions for that step are in the conversation (what "delete" is, documents with
+  no department, one role per person or several, and what stays global such as Users and Audits).

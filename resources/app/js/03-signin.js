@@ -11,7 +11,8 @@ function showSignIn(message){
     clearDocuments();
     clearAudits();
     clearArchive();
-    clearUsers();   // what the last person saw must not stay in the page for the next one
+    clearUsers();
+    clearDepartments();   // what the last person saw must not stay in the page for the next one
     $("#app").hidden = true;
     $("#signin").hidden = false;
     document.documentElement.classList.add("signed-out");

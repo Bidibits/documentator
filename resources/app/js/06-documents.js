@@ -8,7 +8,6 @@ const DEFAULT_TYPES = ["Contract", "MOA", "Permit / License", "Form", "Template"
 function fillSuggestionLists(){
   const types = [...new Set([...DEFAULT_TYPES, ...docs.types])];
   $("#dl-types").replaceChildren(...types.map(t => h("option", {value: t})));
-  $("#dl-depts").replaceChildren(...docs.departments.map(d => h("option", {value: d})));
 }
 
 async function loadDocuments(){

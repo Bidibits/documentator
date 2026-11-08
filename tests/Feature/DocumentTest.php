@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Department;
 use App\Models\Document;
 use App\Models\DocumentFile;
 use App\Models\User;
@@ -122,7 +123,7 @@ class DocumentTest extends TestCase
         $this->signedIn();
 
         $response = $this->register([
-            'doc_type' => 'Contract', 'department' => 'Admin', 'description' => 'Signed copy',
+            'doc_type' => 'Contract', 'department_id' => Department::factory()->create(['name' => 'Admin'])->id, 'description' => 'Signed copy',
             'issued_on' => '2026-11-01', 'expires_on' => '2027-10-31', 'location_note' => 'Cabinet 3, shelf B',
         ])->assertCreated();
 
@@ -272,7 +273,8 @@ class DocumentTest extends TestCase
             'code with a line break' => [['code' => "A\nB"], 'code'],
             'title too long' => [['title' => str_repeat('a', 201)], 'title'],
             'type too long' => [['doc_type' => str_repeat('a', 65)], 'doc_type'],
-            'department too long' => [['department' => str_repeat('a', 101)], 'department'],
+            'unknown department' => [['department_id' => 9999], 'department_id'],
+            'department not a number' => [['department_id' => 'HR'], 'department_id'],
             'description too long' => [['description' => str_repeat('a', 2001)], 'description'],
             'location too long' => [['location_note' => str_repeat('a', 201)], 'location_note'],
             'issued is not a date' => [['issued_on' => 'next week'], 'issued_on'],
@@ -348,15 +350,18 @@ class DocumentTest extends TestCase
     public function test_the_list_is_newest_first_and_offers_the_departments_and_types_in_use(): void
     {
         $this->signedIn();
-        $this->register(['code' => 'A', 'title' => 'First', 'department' => 'HR', 'doc_type' => 'Form'])->assertCreated();
-        $this->register(['code' => 'B', 'title' => 'Second', 'department' => 'Accounting', 'doc_type' => 'Form'])->assertCreated();
+        $hr = Department::factory()->create(['name' => 'HR']);
+        $accounting = Department::factory()->create(['name' => 'Accounting']);
+        Department::factory()->inactive()->create(['name' => 'Old unit']);
+        $this->register(['code' => 'A', 'title' => 'First', 'department_id' => $hr->id, 'doc_type' => 'Form'])->assertCreated();
+        $this->register(['code' => 'B', 'title' => 'Second', 'department_id' => $accounting->id, 'doc_type' => 'Form'])->assertCreated();
         $this->register(['code' => 'C', 'title' => 'Third'])->assertCreated();
 
         $this->api('GET', '/api/documents')->assertOk()
             ->assertJsonPath('documents.0.title', 'Third')
             ->assertJsonPath('documents.2.title', 'First')
             ->assertJsonPath('documents.1.fileCount', 1)
-            ->assertJsonPath('departments', ['Accounting', 'HR'])
+            ->assertJsonPath('departments', [['id' => $accounting->id, 'name' => 'Accounting'], ['id' => $hr->id, 'name' => 'HR']])   // the switched-off one is not offered
             ->assertJsonPath('types', ['Form']);
     }
 

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Department;
 use App\Models\DocumentFile;
 use App\Models\User;
 use Illuminate\Database\QueryException;
@@ -36,7 +37,7 @@ class ChangeLogTest extends TestCase
     private function register(string $code = 'LEASE-1', string $title = 'Office lease'): TestResponse
     {
         return $this->post('/api/documents', [
-            'code' => $code, 'title' => $title, 'department' => 'HR', 'issued_on' => '2026-11-01',
+            'code' => $code, 'title' => $title, 'department_id' => Department::firstOrCreate(['name' => 'HR'])->id, 'issued_on' => '2026-11-01',
             'files' => [UploadedFile::fake()->create('lease.pdf', 20, 'application/pdf')],
         ], ['X-Documentator' => '1', 'Accept' => 'application/json']);
     }
@@ -55,7 +56,7 @@ class ChangeLogTest extends TestCase
         $document = $this->changes('documents');
         $this->assertContains('code: - > LEASE-1 (Created)', $document);
         $this->assertContains('title: - > Office lease (Created)', $document);
-        $this->assertContains('department: - > HR (Created)', $document);
+        $this->assertContains('department_id: - > 1 (Created)', $document);
         $this->assertContains('issued_on: - > 2026-11-01 (Created)', $document);
         $this->assertNotContains('expires_on', array_map(fn ($c) => explode(':', $c)[0], $document));
         $this->assertContains('current_version_id: - > 1 (Created)', $document);

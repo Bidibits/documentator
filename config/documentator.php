@@ -61,10 +61,10 @@ return [
         ],
         'admin' => [
             'label' => 'Administrator',
-            'description' => 'Everything an editor can, and archives, reads the audit log, and manages accounts.',
+            'description' => 'Everything an editor can, and archives, reads the audit log, and manages accounts and departments.',
             'permissions' => [
                 'documentator.document.view', 'documentator.file.download', 'documentator.document.create', 'documentator.version.create',
-                'documentator.archive.manage', 'documentator.audit.view', 'documentator.user.manage',
+                'documentator.archive.manage', 'documentator.audit.view', 'documentator.user.manage', 'documentator.department.manage',
             ],
         ],
     ],
