@@ -8,8 +8,21 @@
 .brand .t{display:flex; flex-direction:column; min-width:0}
 .brand b{font-size:15px}
 .brand .t span{font-size:12.5px; color:var(--ink-3)}
+.tabs{display:flex; gap:2px; flex:1; justify-content:center; min-width:0; overflow-x:auto}
+.tab{
+  border:0; background:transparent; color:var(--ink-3); font:inherit; font-weight:550; font-size:14px; padding:8px 14px;
+  border-radius:var(--r); cursor:pointer; white-space:nowrap; transition:background-color .12s, color .12s;
+}
+.tab:hover{color:var(--ink); background:var(--surface-2)}
+.tab.on{color:var(--accent-text); background:var(--accent-soft)}
+.tab:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+.page[hidden]{display:none}
 .who{display:flex; align-items:center; gap:12px}
 .who-name{font-weight:550; color:var(--ink-2); overflow-wrap:anywhere}
+@media (max-width:900px){
+  .topbar{flex-wrap:wrap}
+  .tabs{order:3; flex-basis:100%; justify-content:flex-start}
+}
 @media (max-width:520px){
   .topbar{padding:10px 16px}
   .brand .t span{display:none}

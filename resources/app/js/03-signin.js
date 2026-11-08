@@ -8,7 +8,8 @@ function showSignIn(message){
     $("#si-err").hidden = true;
     $("#si-pass").value = "";
     closeEverything();
-    clearDocuments();   // what the last person saw must not stay in the page for the next one
+    clearDocuments();
+    clearAudits();   // what the last person saw must not stay in the page for the next one
     $("#app").hidden = true;
     $("#signin").hidden = false;
     document.documentElement.classList.add("signed-out");

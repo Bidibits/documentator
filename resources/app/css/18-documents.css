@@ -68,3 +68,19 @@
 .tl-files{margin-top:8px}
 .tl-files .files{margin:0}
 .file-row .fs.access{white-space:pre-line; margin-top:2px; font-size:11.5px; color:var(--ink-4)}
+
+/* the Audits panel */
+.toolbar input[type=date]{height:36px; padding:0 10px; border:1px solid var(--line-2); border-radius:var(--r); background:var(--surface); color:var(--ink); font:inherit; font-size:13.5px}
+.toolbar input[type=date]:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--ring)}
+.au-day{display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--ink-3)}
+.au-one{display:inline-flex; align-items:center; gap:8px; font-size:13px; color:var(--accent-text); background:var(--accent-soft); border-radius:var(--r); padding:3px 4px 3px 10px}
+.au-table{min-width:1250px}
+.au-table tbody tr{cursor:default}
+.au-table td{padding:8px 12px; vertical-align:top}
+.au-table tr.au-same td{border-top:0}
+.au-table tr.au-same td{border-bottom-color:transparent}
+.au-table tr.au-first td{border-top:0}
+.au-val{max-width:260px; overflow-wrap:anywhere}
+.au-link{border:0; background:none; padding:0; font:inherit; color:var(--accent-text); cursor:pointer; text-align:left; overflow-wrap:anywhere}
+.au-link:hover{text-decoration:underline}
+.mono-sm{font-family:var(--font-mono); font-size:11.5px; color:var(--ink-3)}

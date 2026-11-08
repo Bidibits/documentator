@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AuditController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\FileController;
 use App\Http\Controllers\Api\SessionController;
@@ -21,6 +22,8 @@ Route::middleware('documentator.signed-in')->group(function () {
     Route::post('documents', [DocumentController::class, 'store']);
     Route::get('documents/{document}', [DocumentController::class, 'show'])->whereNumber('document');
     Route::post('documents/{document}/versions', [DocumentController::class, 'storeVersion'])->whereNumber('document');
+
+    Route::get('audits', [AuditController::class, 'index']);
 
     Route::get('files/{file}', [FileController::class, 'download'])->whereNumber('file');
 });

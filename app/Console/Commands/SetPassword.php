@@ -54,7 +54,7 @@ class SetPassword extends Command
             $before = $created ? [] : Arr::only($user->getAttributes(), $columns);
             $user->fill(['password' => $password, 'password_changed_at' => now()->utc()])->save();
             $after = Arr::only((array) DB::table('users')->where('id', $user->id)->first(), $columns);
-            $created ? ChangeLog::created('users', $user->id, $after, $user) : ChangeLog::updated('users', $user->id, $before, $after, $user);
+            $created ? ChangeLog::created('users', $user->id, $after, null) : ChangeLog::updated('users', $user->id, $before, $after, null);
         });
 
         if (! $created) {

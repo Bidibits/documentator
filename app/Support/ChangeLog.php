@@ -97,7 +97,7 @@ final class ChangeLog
             'save_id' => $saveId,
             'occurred_at' => $at,
             'actor_user_id' => $user?->id,
-            'actor_username' => $user?->username ?? ($console ? 'console' : null),
+            'actor_username' => $user?->username ?? 'console',   // no signed-in person: the command line
             'source' => $source,
             'table_name' => $table,
             'record_id' => (string) $id,

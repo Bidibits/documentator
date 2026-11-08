@@ -99,3 +99,13 @@ Settled calls, with the reason. Check here before changing the schema or the rul
   `last_downloaded_at/by`; the drawer shows them under each file, the table shows the latest of each per document. **Not
   column-audited on purpose:** the access dates themselves, since each press is already a line in `audit_logs`.
   The step-2 Audits screen reads `audit_changes`.
+
+- **Built (8 Nov 2026), step 2:** four panels along the top, Documents, Users, Archiving and Audits (the panel is kept in the
+  address, `#audits`, so a refresh stays put). **Users and Archiving are placeholders** that say what will come. **Audits**
+  (`GET /api/audits`, `App\Audits\ChangeReader`) shows `audit_changes` newest save first, each save's columns in the order
+  written, the newest 500 that match with a note when there are more. Filters: table, person (including "the command line"),
+  from and to day by the office clock (Asia/Manila), and one record's history by choosing its name. Names stand in for ids
+  (people, document codes, "CODE · Ver N", file names) and `true`/`false` read Yes/No; a record that is gone shows as "(gone)
+  id". Changes made from the command line are credited to "The command line", not to the account they touch. Until roles
+  exist any signed-in person can read Audits; it will need its own right, as in KVNsys (`audits.view`). Not in Audits: sign-ins
+  and file views/downloads, which stay in the older `audit_logs` (no screen yet).

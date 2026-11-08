@@ -21,6 +21,7 @@
   <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></symbol>
   <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></symbol>
   <symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol>
   <symbol id="i-alert-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></symbol>
 </svg>
 
@@ -30,6 +31,12 @@
       <span class="sb-mark" aria-hidden="true"><svg class="ic"><use href="#i-docs"></use></svg></span>
       <div class="t"><b>Documentator</b><span>Trustera Solutions Inc.</span></div>
     </div>
+    <nav class="tabs" id="tabs" aria-label="Panels">
+      <button class="tab" type="button" data-page="documents">Documents</button>
+      <button class="tab" type="button" data-page="users">Users</button>
+      <button class="tab" type="button" data-page="archiving">Archiving</button>
+      <button class="tab" type="button" data-page="audits">Audits</button>
+    </nav>
     <div class="who">
       <span class="who-name" id="who-name"></span>
       <button class="btn sm" id="who-out" type="button"><svg class="ic"><use href="#i-logout"></use></svg>Sign out</button>
@@ -37,6 +44,7 @@
   </header>
 
   <main class="content">
+    <section class="page" id="page-documents">
     <div class="page-head">
       <div class="ph-t">
         <h1>Documents</h1>
@@ -52,6 +60,44 @@
       <span class="count-note" id="doc-count"></span>
     </div>
     <div class="card tbl-card"><div class="tbl-scroll" id="doc-table"></div></div>
+    </section>
+
+    <section class="page" id="page-users" hidden>
+      <div class="page-head"><div class="ph-t"><h1>Users</h1><p>The people who can sign in, and what each may do.</p></div></div>
+      <div class="card"><div class="empty">
+        <div class="empty-ic"><svg class="ic"><use href="#i-docs"></use></svg></div>
+        <h3>Not built yet</h3>
+        <p>Here an administrator will make accounts, set passwords and switch people off. For now accounts are made on the server with scripts\make-account.cmd.</p>
+      </div></div>
+    </section>
+
+    <section class="page" id="page-archiving" hidden>
+      <div class="page-head"><div class="ph-t"><h1>Archiving</h1><p>Old versions that nobody opens, packed away to save space.</p></div></div>
+      <div class="card"><div class="empty">
+        <div class="empty-ic"><svg class="ic"><use href="#i-docs"></use></svg></div>
+        <h3>Not built yet</h3>
+        <p>Here you will archive versions by hand or set rules, such as "not opened for a year", and take versions back out. The last viewed and last downloaded dates it needs are already recorded.</p>
+      </div></div>
+    </section>
+
+    <section class="page" id="page-audits" hidden>
+      <div class="page-head">
+        <div class="ph-t">
+          <h1>Audits</h1>
+          <p>Every change to a document, version, file or account: who made it, when, and the value before and after. Nothing here can be edited or removed.</p>
+        </div>
+        <div class="ph-a"><button class="btn" id="au-refresh" type="button">Refresh</button></div>
+      </div>
+      <div class="toolbar" id="au-toolbar">
+        <select id="au-table" aria-label="Table"><option value="">All tables</option></select>
+        <select id="au-person" aria-label="Person"><option value="">Everyone</option></select>
+        <label class="au-day">From <input id="au-from" type="date" aria-label="From day"></label>
+        <label class="au-day">To <input id="au-to" type="date" aria-label="To day"></label>
+        <span class="au-one" id="au-one" hidden></span>
+        <span class="count-note" id="au-count"></span>
+      </div>
+      <div class="card tbl-card"><div class="tbl-scroll" id="au-table-wrap"></div></div>
+    </section>
   </main>
 </div>
 
