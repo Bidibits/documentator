@@ -27,6 +27,9 @@ Route::middleware('documentator.signed-in')->group(function () {
     Route::get('audits', [AuditController::class, 'index']);
 
     Route::get('archive', [ArchiveController::class, 'index']);
+    Route::get('archive/rules', [ArchiveController::class, 'rules']);
+    Route::put('archive/rules/{kind}', [ArchiveController::class, 'saveRule'])->whereIn('kind', ['idle', 'old']);
+    Route::post('archive/run', [ArchiveController::class, 'run']);
     Route::post('versions/{version}/archive', [ArchiveController::class, 'archive'])->whereNumber('version');
     Route::post('versions/{version}/restore', [ArchiveController::class, 'restore'])->whereNumber('version');
 

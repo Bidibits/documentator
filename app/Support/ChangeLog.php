@@ -27,7 +27,7 @@ final class ChangeLog
     public const HIDDEN_VALUE = '(hidden)';
 
     /** Columns holding true or false (a database may hand them back as 1 and 0): always logged as true / false. */
-    public const YES_NO = ['active'];
+    public const YES_NO = ['active', 'enabled'];
 
     /** @param  array<string, mixed>  $values  the record's columns by database name */
     public static function created(string $table, int|string $id, array $values, ?User $user, string $source = self::MANUAL): void
@@ -97,7 +97,7 @@ final class ChangeLog
             'save_id' => $saveId,
             'occurred_at' => $at,
             'actor_user_id' => $user?->id,
-            'actor_username' => $user?->username ?? 'console',   // no signed-in person: the command line
+            'actor_username' => $user?->username ?? ($source === self::AUTOMATIC ? 'system' : 'console'),   // no signed-in person: the system itself, or the command line
             'source' => $source,
             'table_name' => $table,
             'record_id' => (string) $id,

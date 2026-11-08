@@ -174,7 +174,7 @@ class AuditScreenTest extends TestCase
 
         $response = $this->api('GET', '/api/audits')->assertOk();
         $this->assertEqualsCanonicalizing(['Ana Reyes', 'Ben Cruz'], array_column($response->json('people'), 'name'));
-        $this->assertSame(['documents', 'document_versions', 'document_files', 'users'], array_column($response->json('tables'), 'table'));
+        $this->assertSame(['documents', 'document_versions', 'document_files', 'users', 'archive_rules'], array_column($response->json('tables'), 'table'));
     }
 
     public function test_passwords_show_as_hidden_and_yes_no_in_words(): void

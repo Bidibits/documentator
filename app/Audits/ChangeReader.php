@@ -21,6 +21,7 @@ final class ChangeReader
         'document_versions' => 'Versions',
         'document_files' => 'Files',
         'users' => 'Users',
+        'archive_rules' => 'Archive rules',
     ];
 
     /** What the screens call a column, where its database name does not say it the same way. */
@@ -44,13 +45,18 @@ final class ChangeReader
         'password_changed_at' => 'Password changed',
         'archived_at' => 'Archived on',
         'archived_by' => 'Archived by',
+        'restored_at' => 'Taken out of archive',
+        'enabled' => 'On',
+        'amount' => 'Number',
+        'unit' => 'Unit',
+        'kind' => 'Rule',
     ];
 
     /** Columns that hold a person's id, a document's id or a version's id: the log shows the name instead. */
     private const PEOPLE = ['created_by', 'updated_by', 'archived_by'];
 
     /** Columns holding true or false. */
-    private const YES_NO = ['active'];
+    private const YES_NO = ['active', 'enabled'];
 
     /**
      * @param  array<string, mixed>  $typed  table, record, person, from, to as typed and picked (empty for any)
@@ -144,7 +150,7 @@ final class ChangeReader
             ->map(fn ($p) => ['id' => (string) $p->id, 'name' => $p->name ?: $p->username ?: 'Account '.$p->id])->all();
 
         if (DB::table('audit_changes')->whereNull('actor_user_id')->exists()) {
-            $people[] = ['id' => 'console', 'name' => 'The command line'];
+            $people[] = ['id' => 'console', 'name' => 'The command line or the system'];
         }
 
         return $people;
@@ -171,6 +177,9 @@ final class ChangeReader
         $fileRows = $fileIds ? DB::table('document_files')->whereIn('id', $fileIds)->get(['id', 'original_name', 'version_id']) : collect();
         $documentIds = array_merge($documentIds, $versionRows->pluck('document_id')->all());
 
+        $ruleIds = $ids('archive_rules');
+        $rules = $ruleIds ? DB::table('archive_rules')->whereIn('id', $ruleIds)->pluck('kind', 'id')
+            ->mapWithKeys(fn ($kind, $id) => [(string) $id => $kind === 'idle' ? 'Not opened for a while' : 'Replaced by a newer version'])->all() : [];
         $codes = $documentIds ? DB::table('documents')->whereIn('id', array_unique($documentIds))->pluck('code', 'id')->all() : [];
         $users = $userIds ? DB::table('users')->whereIn('id', array_unique($userIds))->get(['id', 'name', 'username'])
             ->mapWithKeys(fn ($u) => [(string) $u->id => $u->name ?: $u->username])->all() : [];
@@ -182,8 +191,10 @@ final class ChangeReader
                 'document_versions' => $versions,
                 'document_files' => $fileRows->mapWithKeys(fn ($f) => [(string) $f->id => $f->original_name])->all(),
                 'users' => $users,
+                'archive_rules' => $rules,
             ],
             'users' => $users,
+            'rules' => $rules,
             'documents' => collect($codes)->mapWithKeys(fn ($code, $id) => [(string) $id => $code])->all(),
             'versions' => $versions,
         ];
@@ -206,7 +217,12 @@ final class ChangeReader
             'after' => self::shown($r->column_name, $r->value_after, $names),
             'change' => $r->change_type,
             'source' => $r->source,
-            'by' => $r->actor_user_id ? ($names['users'][(string) $r->actor_user_id] ?? $r->actor_username) : ($r->actor_username === 'console' ? 'The command line' : ''),
+            'by' => $r->actor_user_id ? ($names['users'][(string) $r->actor_user_id] ?? $r->actor_username)
+                : match ($r->actor_username) {
+                    'console' => 'The command line',
+                    'system' => 'The system (archive rules)',
+                    default => '',
+                },
             'where' => (string) $r->ip,
         ];
     }

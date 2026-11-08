@@ -27,7 +27,7 @@ final class Archive
         return $file->id.'.'.pathinfo($file->storage_path, PATHINFO_EXTENSION);
     }
 
-    public static function archive(DocumentVersion $version, User $user, string $source = ChangeLog::MANUAL): void
+    public static function archive(DocumentVersion $version, ?User $user, string $source = ChangeLog::MANUAL): void
     {
         $version->loadMissing(['document', 'files']);
         $document = $version->document;
@@ -66,11 +66,12 @@ final class Archive
             $at = now()->utc();
             DB::transaction(function () use ($version, $user, $zipPath, $size, $at, $document, $source) {
                 $version->forceFill([
-                    'archived_at' => $at, 'archived_by' => $user->id, 'archive_path' => $zipPath, 'archive_size' => $size,
+                    'archived_at' => $at, 'archived_by' => $user?->id, 'archive_path' => $zipPath, 'archive_size' => $size,
                 ])->save();
                 ChangeLog::updated('document_versions', $version->id, ['archived_at' => null, 'archived_by' => null],
-                    ['archived_at' => $at->format('Y-m-d H:i:s'), 'archived_by' => $user->id], $user, $source);
-                AuditLog::record($user, 'version.archived', 'Ver '.$version->rev_no, entityType: 'document', entityId: $document->code);
+                    ['archived_at' => $at->format('Y-m-d H:i:s'), 'archived_by' => $user?->id], $user, $source);
+                AuditLog::record($user, 'version.archived', 'Ver '.$version->rev_no.($user ? '' : ' (by an archive rule)'),
+                    username: $user ? null : 'system', entityType: 'document', entityId: $document->code);
             });
         } catch (\Throwable $e) {
             @unlink($zipFile);
@@ -83,7 +84,7 @@ final class Archive
         }
     }
 
-    public static function restore(DocumentVersion $version, User $user, string $source = ChangeLog::MANUAL): void
+    public static function restore(DocumentVersion $version, ?User $user, string $source = ChangeLog::MANUAL): void
     {
         $version->loadMissing(['document', 'files']);
         if ($version->archived_at === null) {
@@ -127,10 +128,12 @@ final class Archive
         $was = $version->archived_at->format('Y-m-d H:i:s');
         $by = $version->archived_by;
         $path = $version->archive_path;
-        DB::transaction(function () use ($version, $user, $was, $by, $source) {
-            $version->forceFill(['archived_at' => null, 'archived_by' => null, 'archive_path' => null, 'archive_size' => null])->save();
-            ChangeLog::updated('document_versions', $version->id, ['archived_at' => $was, 'archived_by' => $by],
-                ['archived_at' => null, 'archived_by' => null], $user, $source);
+        $restoredAt = now()->utc();
+        DB::transaction(function () use ($version, $user, $was, $by, $source, $restoredAt) {
+            $version->forceFill(['archived_at' => null, 'archived_by' => null, 'archive_path' => null, 'archive_size' => null, 'restored_at' => $restoredAt])->save();
+            // restored_at keeps the archive rules from undoing a restore the same night
+            ChangeLog::updated('document_versions', $version->id, ['archived_at' => $was, 'archived_by' => $by, 'restored_at' => null],
+                ['archived_at' => null, 'archived_by' => null, 'restored_at' => $restoredAt->format('Y-m-d H:i:s')], $user, $source);
             AuditLog::record($user, 'version.restored', 'Ver '.$version->rev_no, entityType: 'document', entityId: $version->document->code);
         });
         $disk->delete($path);

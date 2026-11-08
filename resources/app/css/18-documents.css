@@ -94,3 +94,20 @@
 .arch-table input[type=checkbox]{width:16px; height:16px; accent-color:var(--accent); cursor:pointer}
 .arch-table .sub{font-size:12px; color:var(--ink-3); margin-top:2px}
 .arch-note{margin-left:6px}
+
+/* the archive rules card */
+.arch-rules{margin-bottom:16px}
+.rules-body{padding:16px 18px}
+.rules-h{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:10px}
+.rules-h h3{font-size:14px; font-weight:650}
+.rules-body .hint{font-size:12.5px; color:var(--ink-3); line-height:1.4}
+.rule{display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-top:1px solid var(--line)}
+.rule-on{padding-top:3px}
+.rule-on input{width:16px; height:16px; accent-color:var(--accent); cursor:pointer}
+.rule-b{flex:1; min-width:0}
+.rule-line{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.rule-n{width:72px; height:34px; padding:0 8px; border:1px solid var(--line-2); border-radius:var(--r); background:var(--surface); color:var(--ink); font:inherit}
+.rule-u{height:34px; padding:0 8px; border:1px solid var(--line-2); border-radius:var(--r); background:var(--surface); color:var(--ink); font:inherit}
+.rule-n:focus,.rule-u:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--ring)}
+.rules-f{display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-top:12px; border-top:1px solid var(--line)}
+.rules-body .banner{margin-bottom:10px}

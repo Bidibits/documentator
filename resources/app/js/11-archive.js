@@ -1,10 +1,13 @@
 /* ---------- the Archiving panel ---------- */
 // Old versions (never a current one), the most recently opened first. Tick some and archive them by hand, or take
 // archived ones back out. One request per version, so a long run shows its progress and one failure stops nothing else.
-const arch = {rows: [], summary: null, filter: "all", query: "", selected: new Set(), loaded: false, busy: false};
+const arch = {rows: [], summary: null, filter: "all", query: "", selected: new Set(), loaded: false, busy: false,
+              rules: null, edits: {}, lastRun: null, schedule: "", dueTotal: 0};
 
 function clearArchive(){
   arch.rows = []; arch.summary = null; arch.filter = "all"; arch.query = ""; arch.selected = new Set(); arch.loaded = false;
+  arch.rules = null; arch.edits = {}; arch.lastRun = null; arch.dueTotal = 0;
+  $("#arch-rules").replaceChildren();
   $("#arch-table").replaceChildren();
   $("#arch-count").textContent = ""; $("#arch-summary").textContent = "";
   $("#arch-q").value = ""; $("#arch-filter").value = "all";
@@ -12,6 +15,7 @@ function clearArchive(){
 }
 
 async function loadArchive(){
+  loadRules();
   try{
     const data = await api("GET", "/api/archive");
     arch.rows = data.versions || [];
@@ -159,3 +163,126 @@ $("#arch-do").addEventListener("click", () => confirmArchive("archive"));
 $("#arch-undo").addEventListener("click", () => confirmArchive("restore"));
 $("#arch-q").addEventListener("input", event => { arch.query = event.target.value; renderArchive(); });
 $("#arch-filter").addEventListener("change", event => { arch.filter = event.target.value; renderArchive(); });
+
+/* ---------- the rules: archive by themselves, every night ---------- */
+const RULE_TEXT = {
+  idle: {
+    before: "Archive an old version that nobody has viewed or downloaded for",
+    after: "",
+    note: "A version that was never opened counts from the day it was uploaded.",
+  },
+  old: {
+    before: "Archive an old version",
+    after: "after a newer version replaced it",
+    note: "0 means as soon as it is replaced.",
+  },
+};
+
+async function loadRules(){
+  try{
+    const data = await api("GET", "/api/archive/rules");
+    arch.rules = data.rules; arch.dueTotal = data.dueTotal; arch.lastRun = data.lastRun; arch.schedule = data.schedule;
+    arch.edits = {};
+    renderRules();
+  }catch(e){
+    if(e.status === 401) return;
+    $("#arch-rules").replaceChildren(h("div", {class: "rules-body"}, h("p", {class: "hint"}, "The rules could not be loaded. " + errorWords(e))));
+  }
+}
+
+// a rule as it is on screen: what has been saved, with anything changed but not yet saved on top
+const ruleNow = rule => Object.assign({}, rule, arch.edits[rule.kind] || {});
+
+function renderRules(){
+  const error = h("div", {class: "banner error", role: "alert", hidden: true}, icon("alert-circle"), h("span", {}));
+  const rows = arch.rules.map(rule => {
+    const now = ruleNow(rule), text = RULE_TEXT[rule.kind];
+    const edit = change => { arch.edits[rule.kind] = Object.assign({}, arch.edits[rule.kind] || {}, change); syncRuleButtons(); };
+    const on = h("input", {type: "checkbox", id: "rule-" + rule.kind + "-on"});
+    on.checked = now.enabled;
+    on.addEventListener("change", () => edit({enabled: on.checked}));
+    const amount = h("input", {type: "number", class: "rule-n", min: rule.kind === "old" ? "0" : "1", max: "999", value: String(now.amount), "aria-label": "How many"});
+    amount.addEventListener("input", () => edit({amount: parseInt(amount.value, 10)}));
+    const unit = h("select", {class: "rule-u", "aria-label": "Days, months or years"}, ["days", "months", "years"].map(u => h("option", {value: u}, u)));
+    unit.value = now.unit;
+    unit.addEventListener("change", () => edit({unit: unit.value}));
+    return h("div", {class: "rule"},
+      h("label", {for: "rule-" + rule.kind + "-on", class: "rule-on"}, on),
+      h("div", {class: "rule-b"},
+        h("div", {class: "rule-line"}, h("span", {}, text.before), amount, unit, text.after ? h("span", {}, text.after) : null),
+        h("div", {class: "hint"}, text.note)),
+      h("span", {class: "pill " + (rule.due ? "p-due" : "p-mute"), title: "Versions this rule would archive if it ran now"},
+        rule.due ? plural(rule.due, "version") + " due now" : "none due"));
+  });
+
+  const run = arch.lastRun;
+  const save = h("button", {class: "btn primary", id: "rules-save", type: "button", disabled: true}, "Save rules");
+  const runNow = h("button", {class: "btn", id: "rules-run", type: "button"}, "Run the rules now");
+  save.addEventListener("click", () => saveRules(error));
+  runNow.addEventListener("click", () => confirmRun());
+  $("#arch-rules").replaceChildren(h("div", {class: "rules-body"},
+    h("div", {class: "rules-h"}, h("h3", {}, "Archive rules"), h("span", {class: "hint"}, "Run automatically " + arch.schedule + ". A current version is never archived.")),
+    error, ...rows,
+    h("div", {class: "rules-f"}, save, runNow,
+      h("span", {class: "hint"}, run ? "Last run " + fmtStamp(run.at) + " by " + run.by + ": " + run.note + "." : "The rules have not run yet."))));
+  syncRuleButtons();
+}
+
+// Save is for changes not yet saved; "Run now" is for what is due and saved (a rule edited but unsaved does not count)
+function syncRuleButtons(){
+  const save = $("#rules-save"), run = $("#rules-run");
+  if(!save) return;
+  const dirty = arch.rules.some(r => arch.edits[r.kind] && Object.keys(arch.edits[r.kind]).some(k => arch.edits[r.kind][k] !== r[k]));
+  save.disabled = !dirty || arch.busy;
+  run.disabled = arch.busy || dirty || arch.dueTotal === 0;
+  run.title = dirty ? "Save the rules first" : arch.dueTotal === 0 ? "Nothing is due" : "";
+}
+
+async function saveRules(error){
+  error.hidden = true;
+  const changed = arch.rules.filter(r => arch.edits[r.kind] && Object.keys(arch.edits[r.kind]).some(k => arch.edits[r.kind][k] !== r[k]));
+  for(const rule of changed){
+    const now = ruleNow(rule);
+    const min = rule.kind === "old" ? 0 : 1;
+    if(!Number.isInteger(now.amount) || now.amount < min || now.amount > 999){
+      error.querySelector("span").textContent = "The number must be " + (rule.kind === "old" ? "0 to 999 (0 means as soon as it is replaced)." : "1 to 999.");
+      error.hidden = false;
+      return;
+    }
+  }
+  try{
+    for(const rule of changed){
+      const now = ruleNow(rule);
+      await api("PUT", "/api/archive/rules/" + rule.kind, {enabled: now.enabled, amount: now.amount, unit: now.unit});
+    }
+    toast("Rules saved");
+    await loadRules();
+  }catch(e){
+    if(e.status === 401) return;
+    error.querySelector("span").textContent = e.code === "invalid" ? "One of the rules is not valid. Check the numbers." : errorWords(e);
+    error.hidden = false;
+  }
+}
+
+function confirmRun(){
+  if(arch.dueTotal === 0) return;
+  const progress = h("p", {class: "hint"});
+  openModal("Run the archive rules now?",
+    h("div", {}, h("p", {}, plural(arch.dueTotal, "version") + " " + (arch.dueTotal === 1 ? "is" : "are") + " due and will be archived now, the same as the nightly run would. You can take any of them out again."), progress),
+    async () => {
+      progress.textContent = "Archiving...";
+      arch.busy = true; syncRuleButtons(); syncArchiveButtons();
+      try{
+        const result = await api("POST", "/api/archive/run");
+        closeModal();
+        toast(result.failed.length === 0 ? "Archived " + plural(result.archived, "version")
+          : "Archived " + result.archived + ". " + result.failed[0].code + " Ver " + result.failed[0].rev + " could not be archived (" + result.failed[0].error.replace(/_/g, " ") + ")" +
+            (result.failed.length > 1 ? " and " + (result.failed.length - 1) + " more" : ""), result.failed.length ? "warn" : undefined);
+      }catch(e){
+        if(e.status === 401) return;
+        progress.textContent = errorWords(e);
+        return;
+      }finally{ arch.busy = false; }
+      await Promise.all([loadArchive(), loadDocuments()]);
+    }, "Run now");
+}

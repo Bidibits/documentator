@@ -14,7 +14,7 @@ class DocumentVersion extends Model
 
     protected function casts(): array
     {
-        return ['archived_at' => 'datetime'];
+        return ['archived_at' => 'datetime', 'restored_at' => 'datetime'];
     }
 
     public function archiver(): BelongsTo
@@ -55,7 +55,7 @@ class DocumentVersion extends Model
             'createdAt' => User::stamp($this->created_at),
             'archived' => $this->isArchived(),
             'archivedAt' => User::stamp($this->archived_at),
-            'archivedBy' => $this->archiver?->name ?? '',
+            'archivedBy' => $this->archiver?->name ?? ($this->isArchived() ? 'an archive rule' : ''),
             'archiveSize' => (int) $this->archive_size,
             'files' => $this->files->map->view()->all(),
         ];

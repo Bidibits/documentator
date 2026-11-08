@@ -130,3 +130,19 @@ Settled calls, with the reason. Check here before changing the schema or the rul
   Documents list shows "N archived" beside a document's Ver, and the drawer marks each archived version. **Honest note:**
   zipping already-compressed files saves little, and a tiny file gets bigger in a zip (fixed overhead); the panel prints the
   real before and after. The list has no paging yet; it comes with volume. Step 4 (automatic rules) is not built.
+
+- **Built (8 Nov 2026), step 4, archive rules:** two rules, set in the card at the top of the Archiving panel (table
+  `archive_rules`, one row per kind, off until first saved; each save is a column change shown in Audits as "Archive rules"):
+  **idle**, an old version nobody has viewed or downloaded for N days / months / years (1 to 999; never opened counts from the
+  day it was uploaded), and **old**, an old version N days / months / years after a newer one replaced it (0 to 999; 0 means as
+  soon as it is replaced). A version matching both is archived once. **Never** a current or an already archived version. A
+  version someone took out of the archive (`document_versions.restored_at`) is skipped by "old" for good, and "idle" counts it
+  from the restore, so a restore is not undone the same night. The panel shows how many versions each rule would archive right
+  now, "Save rules", "Run the rules now" (asks first; same code as the night run) and what the last run did. The nightly run is
+  `php artisan documentator:archive-due` (`--limit=500`, `--dry-run`), scheduled at **02:00 office time** (Asia/Manila). It acts as
+  "the system": Source "Automatic", shown as "The system (archive rules)" in Audits, `archived_by` empty and shown as "an
+  archive rule". One version failing (for example a missing file) is reported, noted as `version.archive-failed` in the activity
+  log, and the run carries on; a version that keeps failing is retried and reported every night. **It only runs if something runs
+  the scheduler:** `scripts\dev.cmd` now starts `php artisan schedule:work` beside the server (restart the dev server once to
+  get it); a real server needs the one cron line `* * * * * php artisan schedule:run`. Until roles exist anyone signed in can
+  edit the rules. All four steps of the archive plan are built.
