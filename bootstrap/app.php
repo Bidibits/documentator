@@ -2,6 +2,7 @@
 
 use App\Exceptions\ApiError;
 use App\Http\Middleware\GuardApiRequest;
+use App\Http\Middleware\RequirePermission;
 use App\Http\Middleware\RequireSignIn;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -34,9 +35,10 @@ return Application::configure(basePath: dirname(__DIR__))
             StartSession::class,
         ]);
 
-        $middleware->alias(['documentator.signed-in' => RequireSignIn::class]);
+        $middleware->alias(['documentator.signed-in' => RequireSignIn::class, 'documentator.can' => RequirePermission::class]);
 
         // a stranger gets 401 before any record is looked up, so a 404 can never tell them which ids exist
+        $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: RequirePermission::class);
         $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: RequireSignIn::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

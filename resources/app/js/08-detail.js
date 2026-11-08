@@ -27,7 +27,7 @@ async function openDetail(id){
   $("#d-body").replaceChildren(
     section("Details", details.children.length ? details : h("p", {class: "empty-mini"}, "No details were entered.")),
     section("Files in the current version (Ver " + doc.rev + ")", fileList(current.files),
-      h("button", {class: "btn sm", type: "button", onclick: () => openNewVersion(doc)}, icon("upload"), "Upload new version")),
+      can("documentator.version.create") ? h("button", {class: "btn sm", type: "button", onclick: () => openNewVersion(doc)}, icon("upload"), "Upload new version") : null),
     section("Versions", timeline(doc.versions, current.id)));
 
   openDrawer();

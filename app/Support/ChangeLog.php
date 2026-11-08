@@ -27,7 +27,7 @@ final class ChangeLog
     public const HIDDEN_VALUE = '(hidden)';
 
     /** Columns holding true or false (a database may hand them back as 1 and 0): always logged as true / false. */
-    public const YES_NO = ['active', 'enabled'];
+    public const YES_NO = ['active', 'enabled', 'must_change_password'];
 
     /** @param  array<string, mixed>  $values  the record's columns by database name */
     public static function created(string $table, int|string $id, array $values, ?User $user, string $source = self::MANUAL): void

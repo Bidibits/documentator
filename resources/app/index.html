@@ -50,7 +50,7 @@
     <div class="sb-foot">
       <div class="sb-user" title="Signed in">
         <span class="av" id="who-av" aria-hidden="true"></span>
-        <span class="t"><span class="nm" id="who-name"></span><span class="rl">Signed in</span></span>
+        <span class="t"><span class="nm" id="who-name"></span><span class="rl" id="who-role">Signed in</span></span>
       </div>
       <button class="nav-item" id="who-out" type="button" title="Sign out"><svg class="ic"><use href="#i-logout"></use></svg><span class="lbl">Sign out</span></button>
     </div>
@@ -85,12 +85,21 @@
     </section>
 
     <section class="page" id="page-users" hidden>
-      <div class="page-head"><div class="ph-t"><h1>Users</h1><p>The people who can sign in, and what each may do.</p></div></div>
-      <div class="card"><div class="empty">
-        <div class="empty-ic"><svg class="ic"><use href="#i-docs"></use></svg></div>
-        <h3>Not built yet</h3>
-        <p>Here an administrator will make accounts, set passwords and switch people off. For now accounts are made on the server with scripts\make-account.cmd.</p>
-      </div></div>
+      <div class="page-head">
+        <div class="ph-t">
+          <h1>Users</h1>
+          <p>The people who can sign in. You make each account and set its first password; the person chooses their own the first time they sign in. Nobody else changes a password.</p>
+        </div>
+        <div class="ph-a"><button class="btn primary" id="usr-new" type="button"><svg class="ic"><use href="#i-plus"></use></svg>New user</button></div>
+      </div>
+      <div class="toolbar">
+        <div class="q-wrap">
+          <svg class="ic"><use href="#i-search"></use></svg>
+          <input id="usr-q" type="search" placeholder="Search users" autocomplete="off" spellcheck="false" aria-label="Search users">
+        </div>
+        <span class="count-note" id="usr-count"></span>
+      </div>
+      <div class="card tbl-card"><div class="tbl-scroll" id="usr-table"></div></div>
     </section>
 
     <section class="page" id="page-archiving" hidden>
@@ -141,6 +150,23 @@
     </section>
   </main>
   </div>
+</div>
+
+<div class="signin" id="pwchange" hidden>
+  <form class="si-card" id="pw-form" novalidate aria-labelledby="pw-title">
+    <div class="si-brand">
+      <span class="sb-mark" aria-hidden="true"><svg class="ic"><use href="#i-docs"></use></svg></span>
+      <div class="t"><b>Documentator</b><span>Document management &middot; Trustera Solutions Inc.</span></div>
+    </div>
+    <h1 id="pw-title">Choose a new password</h1>
+    <p class="si-sub" id="pw-msg">Your administrator set the password you just used. Choose your own to carry on. At least 8 characters, and not your username.</p>
+    <div class="f"><label for="pw-cur">Password you were given</label><input id="pw-cur" type="password" autocomplete="current-password" maxlength="128"></div>
+    <div class="f"><label for="pw-new">New password</label><input id="pw-new" type="password" autocomplete="new-password" maxlength="128"></div>
+    <div class="f"><label for="pw-new2">New password again</label><input id="pw-new2" type="password" autocomplete="new-password" maxlength="128"></div>
+    <div class="si-err" id="pw-err" role="alert" hidden></div>
+    <button class="btn primary si-go" id="pw-go" type="submit">Save password</button>
+    <p class="si-foot"><button class="btn ghost sm" id="pw-out" type="button">Sign out</button></p>
+  </form>
 </div>
 
 <div class="scrim" id="scrim" hidden></div>

@@ -23,7 +23,24 @@ class UserFactory extends Factory
             'password' => 'correct-horse',
             'active' => true,
             'auth_source' => User::AUTH_LOCAL,
+            'role' => 'admin',   // most tests need to do everything
+            'must_change_password' => false,
         ];
+    }
+
+    public function viewer(): static
+    {
+        return $this->state(fn () => ['role' => 'viewer']);
+    }
+
+    public function editor(): static
+    {
+        return $this->state(fn () => ['role' => 'editor']);
+    }
+
+    public function mustChangePassword(): static
+    {
+        return $this->state(fn () => ['must_change_password' => true]);
     }
 
     public function inactive(): static

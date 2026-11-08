@@ -36,6 +36,7 @@ function clearDocuments(){
 }
 
 function errorWords(e){
+  if(e.code === "forbidden") return "Your role does not allow that.";
   return e.code === "offline" ? "The server did not answer. Check the network and try again." : "Something went wrong. Try again.";
 }
 
@@ -76,8 +77,8 @@ function renderDocuments(){
     shown.length === docs.all.length ? plural(docs.all.length, "document") : shown.length + " of " + docs.all.length;
 
   if(docs.all.length === 0){
-    $("#doc-table").replaceChildren(emptyBlock("No documents yet", "Upload the first one. Each document gets a code, and every upload of it is kept as a version.",
-      h("button", {class: "btn primary", type: "button", onclick: openUpload}, icon("upload"), "Upload document")));
+    $("#doc-table").replaceChildren(emptyBlock("No documents yet", can("documentator.document.create") ? "Upload the first one. Each document gets a code, and every upload of it is kept as a version." : "Nothing has been registered yet.",
+      can("documentator.document.create") ? h("button", {class: "btn primary", type: "button", onclick: openUpload}, icon("upload"), "Upload document") : null));
     return;
   }
   if(shown.length === 0){

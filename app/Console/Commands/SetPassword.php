@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Auth\Access;
 use App\Auth\PasswordPolicy;
 use App\Auth\SessionUser;
 use App\Models\User;
@@ -14,7 +15,7 @@ use Illuminate\Support\Str;
 
 class SetPassword extends Command
 {
-    protected $signature = 'documentator:set-password {username : The sign-in name} {--create : Make the account if it does not exist} {--name= : Full name for a new account}';
+    protected $signature = 'documentator:set-password {username : The sign-in name} {--create : Make the account if it does not exist} {--name= : Full name for a new account} {--role=admin : The role of a new account (viewer, editor or admin)}';
 
     protected $description = 'Set (or with --create, make) an account and its password. There is no sign-up page: this is how the first account starts.';
 
@@ -34,6 +35,12 @@ class SetPassword extends Command
             return self::FAILURE;
         }
 
+        if (! Access::exists((string) $this->option('role'))) {
+            $this->error('The role must be one of: '.implode(', ', array_keys(Access::roles())).'.');
+
+            return self::FAILURE;
+        }
+
         $password = (string) $this->secret('Password');
         if ($password !== (string) $this->secret('Password again')) {
             $this->error('The two passwords differ.');
@@ -47,8 +54,8 @@ class SetPassword extends Command
         }
 
         $created = $user === null;
-        $user ??= new User(['username' => $username, 'name' => (string) ($this->option('name') ?: $username)]);
-        $columns = ['username', 'name', 'password', 'active', 'auth_source', 'external_id', 'password_changed_at'];
+        $user ??= (new User(['username' => $username, 'name' => (string) ($this->option('name') ?: $username)]))->forceFill(['role' => (string) $this->option('role')]);
+        $columns = ['username', 'name', 'role', 'password', 'active', 'auth_source', 'external_id', 'must_change_password', 'password_changed_at'];
         // the account and its change rows are one save: both or neither
         DB::transaction(function () use ($user, $password, $created, $columns) {
             $before = $created ? [] : Arr::only($user->getAttributes(), $columns);

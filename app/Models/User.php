@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Auth\Access;
 use Carbon\CarbonInterface;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -12,7 +13,7 @@ use Illuminate\Support\Str;
 
 #[Fillable([
     'username', 'name', 'password', 'active', 'auth_source', 'external_id',
-    'last_login_at', 'password_changed_at',
+    'last_login_at', 'password_changed_at', 'role', 'must_change_password',
 ])]
 #[Hidden(['password'])]
 class User extends Authenticatable
@@ -39,6 +40,7 @@ class User extends Authenticatable
     {
         return [
             'active' => 'boolean',
+            'must_change_password' => 'boolean',
             'last_login_at' => 'datetime',
             'password_changed_at' => 'datetime',
             'password' => 'hashed',
@@ -64,6 +66,11 @@ class User extends Authenticatable
             'active' => $this->active,
             'authSource' => $this->auth_source,
             'lastLogin' => self::stamp($this->last_login_at),
+            'role' => $this->role,
+            'roleLabel' => Access::label((string) $this->role),
+            'permissions' => Access::permissions((string) $this->role),
+            'mustChangePassword' => (bool) $this->must_change_password,
+            'createdAt' => self::stamp($this->created_at),
         ];
     }
 

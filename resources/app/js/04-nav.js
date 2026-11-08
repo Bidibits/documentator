@@ -1,15 +1,17 @@
 /* ---------- the side bar: panels, and a rail that folds in and out ---------- */
 const PAGES = ["documents", "users", "archiving", "audits"];
+// what each panel needs (the server refuses it otherwise; this decides what is shown)
+const PAGE_RIGHTS = {documents: "documentator.document.view", users: "documentator.user.manage", archiving: "documentator.archive.manage", audits: "documentator.audit.view"};
 const PAGE_TITLES = {documents: "Documents", users: "Users", archiving: "Archiving", audits: "Audits"};
 
 function pageFromHash(){
   const name = location.hash.replace(/^#/, "");
-  return PAGES.includes(name) ? name : "documents";
+  return PAGES.includes(name) && can(PAGE_RIGHTS[name]) ? name : PAGES.find(p => can(PAGE_RIGHTS[p])) || "documents";
 }
 
 // shows one panel and loads what it holds
 function showPage(name){
-  if(!PAGES.includes(name)) name = "documents";
+  if(!PAGES.includes(name) || !can(PAGE_RIGHTS[name])) name = pageFromHash();
   for(const page of PAGES) $("#page-" + page).hidden = page !== name;
   for(const item of document.querySelectorAll("#tabs .nav-item")){
     if(item.dataset.page === name) item.setAttribute("aria-current", "page"); else item.removeAttribute("aria-current");
@@ -22,6 +24,7 @@ function showPage(name){
   if(name === "documents") loadDocuments();
   if(name === "audits") loadAudits();
   if(name === "archiving") loadArchive();
+  if(name === "users") loadUsers();
 }
 
 // the wide screen's side bar folds to icons and back; the choice is kept in this browser

@@ -2,6 +2,7 @@
 
 namespace App\Audits;
 
+use App\Auth\Access;
 use App\Exceptions\ApiError;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -47,6 +48,8 @@ final class ChangeReader
         'archived_by' => 'Archived by',
         'restored_at' => 'Taken out of archive',
         'enabled' => 'On',
+        'role' => 'Role',
+        'must_change_password' => 'Must change password',
         'amount' => 'Number',
         'unit' => 'Unit',
         'kind' => 'Rule',
@@ -56,7 +59,7 @@ final class ChangeReader
     private const PEOPLE = ['created_by', 'updated_by', 'archived_by'];
 
     /** Columns holding true or false. */
-    private const YES_NO = ['active', 'enabled'];
+    private const YES_NO = ['active', 'enabled', 'must_change_password'];
 
     /**
      * @param  array<string, mixed>  $typed  table, record, person, from, to as typed and picked (empty for any)
@@ -240,6 +243,7 @@ final class ChangeReader
         return match (true) {
             $column === 'document_id' => $names['documents'][$value] ?? $value,
             $column === 'version_id', $column === 'current_version_id' => $names['versions'][$value] ?? $value,
+            $column === 'role' => Access::label($value),
             in_array($column, self::YES_NO, true) => $value === 'true' ? 'Yes' : ($value === 'false' ? 'No' : $value),
             default => $value,
         };

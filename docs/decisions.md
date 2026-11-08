@@ -20,8 +20,8 @@ Settled calls, with the reason. Check here before changing the schema or the rul
   with a local password.
 - **Password changes follow PMS:** an admin sets every password, and people do not change their own. **One exception the
   user asked for:** a password an admin has just set must be changed by the person at their first sign-in, and an admin
-  reset forces the same again. (Not built yet.)
-- An admin creates users in the app. (Not built yet; it needs roles first.)
+  reset forces the same again. (Built 8 Nov 2026, see "Users and roles" below.)
+- An admin creates users in the app. (Built 8 Nov 2026, see "Users and roles" below.)
 
 ## Documents
 
@@ -53,7 +53,7 @@ Settled calls, with the reason. Check here before changing the schema or the rul
   shown, and the page says so. **Still download-only:** the old .doc and .xls, and PowerPoint (.ppt, .pptx). An exact view
   or editing in the browser means an editor service (OnlyOffice, Collabora, Microsoft 365), a later decision; for now the
   way to change a file is download, edit, upload as a new version.
-- Until roles exist, every signed-in person can register, read and download. Permissions come with the roles step.
+- What a person may do depends on their role ("Users and roles" below).
 - **Uploading a new version (8 Nov 2026):** "Upload new version" in the drawer adds Ver 1, 2, ... to the same document (same
   code and details). The new version is the whole set of files for that version (not only the changed ones), with an optional
   change note (up to 500 characters). Earlier versions and their files are kept and stay downloadable. The number is the
@@ -146,3 +146,33 @@ Settled calls, with the reason. Check here before changing the schema or the rul
   the scheduler:** `scripts\dev.cmd` now starts `php artisan schedule:work` beside the server (restart the dev server once to
   get it); a real server needs the one cron line `* * * * * php artisan schedule:run`. Until roles exist anyone signed in can
   edit the rules. All four steps of the archive plan are built.
+
+## Users and roles (8 Nov 2026)
+
+- **Roles are bundles of namespaced permissions**, the names OneHub will use (`documentator.document.view`, `.file.download`,
+  `.document.create`, `.version.create`, `.archive.manage`, `.audit.view`, `.user.manage`). Three roles, in
+  `config/documentator.php`: **Viewer** (view documents, view and download files), **Editor** (also register documents and
+  upload new versions), **Administrator** (also archive and its rules, read Audits, manage users). `AppAuthAccess` answers
+  "may this person do that", and **the server is the rule**: each route names its permission
+  (`documentator.can:<permission>`, a 403 `forbidden` otherwise, checked before a record is looked up so a person cannot
+  tell from a 404 what exists). The screen only hides what would be refused. Editing the bundles from the screen, and
+  per-department permissions, are later decisions.
+- **Accounts that existed before roles became administrators** (they could do everything before); new ones are made as a
+  viewer unless the administrator chooses another role. `make-account.cmd` makes administrators (`--role=viewer|editor|admin`).
+- **Users screen** (right `user.manage`): list, search, **New user** (full name, username, role, first password typed by the
+  administrator, who tells the person), **Edit** (name, role), **Set password**, **Switch off / on**. The username is not
+  changed later. Passwords follow the existing policy (8 to 128 characters, not the username).
+- **Forced change at first sign-in:** an account made by an administrator, and one whose password an administrator sets, has
+  `must_change_password`. That person can sign in but the server refuses everything except session, sign-out and
+  `POST /api/password` (403 `password_change_required`), and the app shows a "Choose a new password" screen. It needs the
+  password they were given and a different one that passes the policy; their other sessions end, this one carries on.
+  **That is the only time anyone changes their own password** (PMS: an administrator sets every other one; refused otherwise).
+  An account made from the command line is not forced, since the person at the server knows the password.
+- **Guards:** an administrator cannot switch off or change the role of **their own** account or set their own password here
+  (`own_account`); the last active administrator can never be removed (`last_admin`, a second guard behind the first); a
+  OneHub account has no password here (`not_local`). Switching an account off ends its sessions at once and keeps its
+  documents and history.
+- **Audited:** every account change is a column change in Audits (password always "(hidden)", role shown in words, who made it)
+  and `user.created`, `user.password-set`, `user.password-changed`, `user.switched-off/on` are in the activity log.
+- **Not built:** password reset by e-mail (there is no e-mail, by design), OneHub linking, editing roles, departments as
+  permissions, and a screen for the activity log (sign-ins, views and downloads).

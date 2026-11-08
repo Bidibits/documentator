@@ -111,3 +111,13 @@
 .rule-n:focus,.rule-u:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--ring)}
 .rules-f{display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-top:12px; border-top:1px solid var(--line)}
 .rules-body .banner{margin-bottom:10px}
+
+/* the Users panel */
+.usr-table{min-width:900px}
+.usr-table tbody tr{cursor:default}
+.usr-acts{white-space:nowrap; display:flex; gap:6px; flex-wrap:wrap}
+.usr-you{margin-left:8px}
+.usr-flag{margin-left:6px}
+.usr-show{display:inline-flex; align-items:center; gap:6px; margin-top:6px; font-size:12.5px; color:var(--ink-3); cursor:pointer}
+.modal .f select{width:100%}
+.si-foot .btn{margin-top:2px}
